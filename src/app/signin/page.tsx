@@ -10,7 +10,7 @@ function SignInButton() {
   return (
     <div className="w-full max-w-sm space-y-3">
       <button
-        onClick={() => signIn("google", { callbackUrl: "/home" })}
+        onClick={() => signIn("google", { callbackUrl: "/inbox" })}
         className="flex w-full items-center justify-center space-x-2 rounded-lg border border-gray-300 bg-white py-2 font-medium transition hover:bg-gray-50"
       >
         <Image
