@@ -1,6 +1,7 @@
 import type { Session } from "next-auth";
 import { TRPCError } from "@trpc/server";
 import { gmail_v1, google } from "googleapis";
+import { simpleParser } from "mailparser";
 
 /**
  *
@@ -47,14 +48,43 @@ export function getGmailClient(session: Session) {
   return google.gmail({ version: "v1", auth: oAuth2Client });
 }
 
+// decodes a base64url encoded string
+function decodeBase64Url(data: string): string {
+  // 1) URL‑safe -> standard Base64
+  const b64 = data.replace(/-/g, "+").replace(/_/g, "/");
+  // 2) Pad length to multiple of 4
+  const pad = (4 - (b64.length % 4)) % 4;
+  const padded = b64 + "=".repeat(pad);
+  // 3) Decode
+  return Buffer.from(padded, "base64").toString("utf-8");
+}
+
 export async function getMessageDetails(
   client: gmail_v1.Gmail,
   messageId: string
 ) {
+  // https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages#Message
+  // when specifying raw format, we obtain RFC2822 + base64url encoded string
   const res = await client.users.messages.get({
     userId: "me", // or the user’s email address
     id: messageId,
-    format: "full", // or 'metadata', 'minimal', 'raw'
+    format: "raw", // 'full', 'metadata', 'minimal', 'raw'
   });
-  return res.data; // this is your Gmail message object
+
+  const rawEmailData = decodeBase64Url(res.data.raw!);
+  const parsed = await simpleParser(rawEmailData);
+
+  return {
+    text: parsed.text ?? "",
+    subject: parsed.subject,
+    from: Array.isArray(parsed.from) ? parsed.from[0]?.text : parsed.from?.text,
+    to: Array.isArray(parsed.to) ? parsed.to[0]?.text : parsed.to?.text,
+    date: parsed.date,
+    attachments:
+      parsed.attachments?.map((att) => ({
+        filename: att.filename,
+        contentType: att.contentType,
+        size: att.size,
+      })) || [],
+  };
 }
