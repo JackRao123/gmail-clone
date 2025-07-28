@@ -1,34 +1,24 @@
+import type { Session } from "next-auth";
 import { TRPCError } from "@trpc/server";
 import { google } from "googleapis";
+import z from "zod";
 
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
+
+import { getGmailClient, getMessageDetails } from "../mail";
 
 export const mailRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx, input }) => {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const accessToken = ctx.session?.user.accessToken;
-    const refreshToken = ctx.session?.user.refreshToken;
+    const client = getGmailClient(ctx.session);
 
-    // console.log(`accessToken = ${accessToken}`);
-    // console.log(`refreshToken = ${refreshToken}`);
-
+    // Retrieve list of Ids
     const messageIds = Array<string>();
-
     try {
-      const oAuth2Client = new google.auth.OAuth2({
-        clientId: clientId,
-        clientSecret: clientSecret,
-      });
-
-      oAuth2Client.setCredentials({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-
-      const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
-
-      const res = await gmail.users.messages.list({
+      const res = await client.users.messages.list({
         userId: "me",
         maxResults: 20,
       });
@@ -51,6 +41,19 @@ export const mailRouter = createTRPCRouter({
       emails: messageIds,
     };
   }),
+
+  get: protectedProcedure
+    .input(
+      z.object({
+        messageId: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const client = getGmailClient(ctx.session);
+      const data = await getMessageDetails(client, input.messageId);
+
+      return data;
+    }),
 
   //   create: protectedProcedure
   //     .input(z.object({ name: z.string().min(1) }))
