@@ -3,8 +3,11 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Geist } from "next/font/google";
+import { ErrorBoundary } from "react-error-boundary";
 import { Toaster } from "sonner";
 
+import GlobalErrorFallback from "~/features/shared/components/GlobalErrorFallback";
+import ReusableErrorBoundary from "~/features/shared/components/ReusableErrorBoundary";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -24,10 +27,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`}>
       <body>
-        <TRPCReactProvider>
-          <SessionProvider>{children}</SessionProvider>
-        </TRPCReactProvider>
-        <Toaster />
+        <ReusableErrorBoundary FallbackComponent={GlobalErrorFallback}>
+          <TRPCReactProvider>
+            <SessionProvider>{children}</SessionProvider>
+          </TRPCReactProvider>
+          <Toaster />
+        </ReusableErrorBoundary>
       </body>
     </html>
   );

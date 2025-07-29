@@ -1,7 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 
+import { Skeleton } from "~/features/shared/components/ui/skeleton";
 import { useTRPC } from "~/trpc/react";
 
 import ProfileMenu, { MenuOpenDirection } from "../_components/ProfileMenu";
@@ -11,42 +13,27 @@ interface EmailCardProps {
 }
 function EmailCard(props: EmailCardProps) {
   const trpc = useTRPC();
-  const { data, isLoading, isError, error } = useQuery(
+  const { data } = useSuspenseQuery(
     trpc.mail.get.queryOptions({ messageId: props.emailId })
   );
-
-  if (isLoading || !data) {
-    return <div>loading ...</div>;
-  }
 
   return <div className="border-10 border-red-500 p-10">{`${data.text}`}</div>;
 }
 
 export default function Inbox() {
   const trpc = useTRPC();
-  const { data, isLoading, isError, error } = useQuery(
-    trpc.mail.list.queryOptions()
-  );
+  const { data } = useSuspenseQuery(trpc.mail.list.queryOptions());
 
   return (
-    <div>
-      <ProfileMenu menuOpenDirection={MenuOpenDirection.BOTTOM_RIGHT} />
-
-      {isLoading && <div>Loading…</div>}
-
-      {isError && (
-        <div style={{ color: "red" }}>
-          Error fetching emails: {error.message}
-        </div>
-      )}
-
-      {!isLoading && !isError && (
+    <Suspense fallback={<Skeleton />}>
+      <div>
+        <ProfileMenu menuOpenDirection={MenuOpenDirection.BOTTOM_RIGHT} />
         <ul>
-          {data!.emails.map((id) => (
+          {data.emails.map((id) => (
             <EmailCard key={id} emailId={id} />
           ))}
         </ul>
-      )}
-    </div>
+      </div>
+    </Suspense>
   );
 }
