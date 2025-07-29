@@ -1,7 +1,8 @@
 import React, { Suspense, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Skeleton } from "~/features/shared/components/ui/skeleton";
+import { useTRPC } from "~/trpc/react";
 
 import { EmailDetail } from "./EmailDetail";
 import { EmailList } from "./EmailList";
@@ -9,7 +10,10 @@ import { EmailToolbar } from "./EmailToolbar";
 
 export function EmailInterface() {
   const [selectedEmailId, setSelectedEmailId] = useState<string | undefined>();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const queryClient = useQueryClient();
+  const trpc = useTRPC();
 
   const handleEmailSelect = (emailId: string) => {
     setSelectedEmailId(emailId);
@@ -20,7 +24,7 @@ export function EmailInterface() {
   };
 
   const handleRefresh = () => {
-    void queryClient.invalidateQueries({ queryKey: ["mail.list"] });
+    void queryClient.invalidateQueries({ queryKey: trpc.mail.list.queryKey() });
   };
 
   const handleCompose = () => {
@@ -33,6 +37,54 @@ export function EmailInterface() {
     console.log("Search:", query);
   };
 
+  const syncMutation = useMutation(
+    trpc.mail.sync.mutationOptions({
+      onSuccess: (result) => {
+        console.log("Sync result:", result);
+        // Refresh the email list after sync
+        void queryClient.invalidateQueries({
+          queryKey: trpc.mail.list.queryKey(),
+        });
+      },
+      onError: (error) => {
+        console.error("Sync failed:", error);
+      },
+      onSettled: () => {
+        setIsSyncing(false);
+      },
+    })
+  );
+
+  const handleSync = () => {
+    setIsSyncing(true);
+    syncMutation.mutate({
+      maxResults: 50, // Sync up to 50 emails
+    });
+  };
+
+  const clearMutation = useMutation(
+    trpc.mail.clear.mutationOptions({
+      onSuccess: (result) => {
+        console.log(`Deleted ${result.count} emails`);
+        // Refresh the email list after sync
+        void queryClient.invalidateQueries({
+          queryKey: trpc.mail.list.queryKey(),
+        });
+      },
+      onError: (error) => {
+        console.error("Deletion failed:", error);
+      },
+      onSettled: () => {
+        setIsDeleting(false);
+      },
+    })
+  );
+
+  const handleDeleteAll = () => {
+    setIsDeleting(true);
+    clearMutation.mutate();
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
@@ -41,6 +93,10 @@ export function EmailInterface() {
           onRefresh={handleRefresh}
           onCompose={handleCompose}
           onSearch={handleSearch}
+          onSync={handleSync}
+          onDeleteAll={handleDeleteAll}
+          isSyncing={isSyncing}
+          isDeleting={isDeleting}
         />
       </div>
 

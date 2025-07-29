@@ -13,16 +13,18 @@ interface EmailListProps {
 }
 
 interface EmailItemProps {
-  emailId: string;
+  email: {
+    id: string;
+    subject?: string;
+    from?: string;
+    to?: string;
+    date?: Date;
+  };
   isSelected: boolean;
   onSelect: () => void;
 }
 
-function EmailItem({ emailId, isSelected, onSelect }: EmailItemProps) {
-  const trpc = useTRPC();
-  const { data } = useSuspenseQuery(
-    trpc.mail.get.queryOptions({ messageId: emailId })
-  );
+function EmailItem({ email, isSelected, onSelect }: EmailItemProps) {
 
   return (
     <div
@@ -35,24 +37,25 @@ function EmailItem({ emailId, isSelected, onSelect }: EmailItemProps) {
     >
       <div className="flex-shrink-0">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-300 text-sm font-medium text-gray-700 dark:bg-gray-600 dark:text-gray-300">
-          {data.from.charAt(0).toUpperCase() ?? "?"}
+          {email.from?.charAt(0).toUpperCase() ?? "?"}
         </div>
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between">
           <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-            {data.from}
+            {email.from ?? "Unknown"}
           </p>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {data.date ? new Date(data.date).toLocaleDateString() : ""}
+            {email.date ? new Date(email.date).toLocaleDateString() : ""}
           </span>
         </div>
         <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-          {data.subject}
+          {email.subject ?? "No subject"}
         </p>
         <p className="truncate text-sm text-gray-600 dark:text-gray-300">
-          {data.text.substring(0, 120) ?? "No preview available"}
+          {/* Note: We don't have text preview in the list view anymore */}
+          Click to view email content
         </p>
       </div>
     </div>
@@ -61,7 +64,7 @@ function EmailItem({ emailId, isSelected, onSelect }: EmailItemProps) {
 
 export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
   const trpc = useTRPC();
-  const { data, isLoading } = useQuery(trpc.mail.list.queryOptions());
+  const { data, isLoading } = useQuery(trpc.mail.list.queryOptions({}));
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (e: React.FormEvent) => {
@@ -98,12 +101,12 @@ export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
         </div>
       ) : emails.length !== 0 ? (
         <div className="flex-1 overflow-auto">
-          {emails.map((emailId) => (
+          {emails.map((email: any) => (
             <EmailItem
-              emailId={emailId}
-              key={emailId}
-              isSelected={selectedEmailId === emailId}
-              onSelect={() => onEmailSelect(emailId)}
+              email={email}
+              key={email.id}
+              isSelected={selectedEmailId === email.id}
+              onSelect={() => onEmailSelect(email.id)}
             />
           ))}
         </div>
