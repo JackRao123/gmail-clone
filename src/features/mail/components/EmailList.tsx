@@ -1,3 +1,4 @@
+import type { EmailMetaData } from "~/server/api/routers/mail";
 import React, { Suspense, useState } from "react";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 
@@ -13,19 +14,12 @@ interface EmailListProps {
 }
 
 interface EmailItemProps {
-  email: {
-    id: string;
-    subject?: string;
-    from?: string;
-    to?: string;
-    date?: Date;
-  };
+  email: EmailMetaData;
   isSelected: boolean;
   onSelect: () => void;
 }
 
 function EmailItem({ email, isSelected, onSelect }: EmailItemProps) {
-
   return (
     <div
       className={cn(
@@ -101,12 +95,12 @@ export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
         </div>
       ) : emails.length !== 0 ? (
         <div className="flex-1 overflow-auto">
-          {emails.map((email: any) => (
+          {emails.map((email) => (
             <EmailItem
               email={email}
-              key={email.id}
-              isSelected={selectedEmailId === email.id}
-              onSelect={() => onEmailSelect(email.id)}
+              key={email.messageId}
+              isSelected={selectedEmailId === email.messageId}
+              onSelect={() => onEmailSelect(email.messageId)}
             />
           ))}
         </div>

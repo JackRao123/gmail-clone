@@ -74,24 +74,28 @@ export function EmailDetail({ emailId, onBack }: EmailDetailProps) {
         </div>
 
         {/* Email Body */}
-        <iframe // iframe is 'separate document' so no parent styles will leak in.
-          title="Email Detail"
-          srcDoc={html}
-          sandbox="
-          allow-same-origin          /* so relative URLs, images, stylesheets resolve correctly */
-          allow-scripts              /* only if you really need JS in the email (Gmail normally strips scripts) */
-          allow-popups               /* so window.open / target=_blank works */
-          allow-popups-to-escape-sandbox /* so popups aren't forced back into the iframe context */
-          allow-forms                /* if the email contains forms you want to submit */
-          allow-modals               /* to allow alert/confirm/dialogs, if absolutely necessary */
-          allow-top-navigation-by-user-activation /* so clicking links can navigate the top-level window */
-         "
-          style={{
-            width: "100%",
-            height: "100%", // or set a fixed height
-            border: "none",
-          }}
-        />
+        {html ? (
+          <iframe // iframe is 'separate document' so no parent styles will leak in.
+            title="Email Detail"
+            srcDoc={html}
+            sandbox="
+            allow-same-origin          /* so relative URLs, images, stylesheets resolve correctly */
+            allow-scripts              /* only if you really need JS in the email (Gmail normally strips scripts) */
+            allow-popups               /* so window.open / target=_blank works */
+            allow-popups-to-escape-sandbox /* so popups aren't forced back into the iframe context */
+            allow-forms                /* if the email contains forms you want to submit */
+            allow-modals               /* to allow alert/confirm/dialogs, if absolutely necessary */
+            allow-top-navigation-by-user-activation /* so clicking links can navigate the top-level window */
+           "
+            style={{
+              width: "100%",
+              height: "100%", // or set a fixed height
+              border: "none",
+            }}
+          />
+        ) : (
+          <div>not impleentend</div>
+        )}
 
         {/* Attachments */}
         {/* {attachments.length > 0 && (

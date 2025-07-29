@@ -1,4 +1,5 @@
 import type { Session } from "next-auth";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { TRPCError } from "@trpc/server";
 import { gmail_v1, google } from "googleapis";
 import { simpleParser } from "mailparser";
@@ -48,6 +49,20 @@ export function getGmailClient(session: Session) {
   return google.gmail({ version: "v1", auth: oAuth2Client });
 }
 
+/**
+ * @returns s3 client
+ */
+export function getS3Client() {
+  const s3 = new S3Client({
+    region: process.env.AWS_REGION!,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    },
+  });
+  return s3;
+}
+
 // decodes a base64url encoded string
 function decodeBase64Url(data: string): string {
   // 1) URL‑safe -> standard Base64
@@ -59,6 +74,12 @@ function decodeBase64Url(data: string): string {
   return Buffer.from(padded, "base64").toString("utf-8");
 }
 
+/**
+ *
+ * @param client - gmail client. call getGmailClient(ctx.session) to obtain this
+ * @param messageId - ID of message (in gmail API) to fetch details for
+ * @returns details of the message
+ */
 export async function getMessageDetails(
   client: gmail_v1.Gmail,
   messageId: string
@@ -91,7 +112,7 @@ export async function getMessageDetails(
   }
 
   return {
-    text: parsed.text ?? "",
+    // text: parsed.text ?? "",
     html: parsed.html ?? "",
     subject: parsed.subject ?? "",
     from,

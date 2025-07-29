@@ -1,4 +1,5 @@
 import type { Session } from "next-auth";
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { TRPCError } from "@trpc/server";
 import { google } from "googleapis";
 import z from "zod";
@@ -9,7 +10,16 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
-import { getGmailClient, getMessageDetails } from "../mail";
+import { getGmailClient, getMessageDetails, getS3Client } from "../mail";
+
+export interface EmailMetaData {
+  createdAt: Date;
+  messageId: string;
+  subject: string | null;
+  from: string | null;
+  to: string | null;
+  date: Date | null;
+}
 
 export const mailRouter = createTRPCRouter({
   // Fetch emails from database
@@ -23,7 +33,7 @@ export const mailRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       // Fetch from database
-      const emails = await ctx.db.email.findMany({
+      const found = await ctx.db.email.findMany({
         where: {
           userId: ctx.session.user.id,
         },
@@ -33,7 +43,6 @@ export const mailRouter = createTRPCRouter({
         take: input.limit,
         skip: input.offset,
         select: {
-          id: true,
           messageId: true,
           subject: true,
           from: true,
@@ -43,14 +52,17 @@ export const mailRouter = createTRPCRouter({
         },
       });
 
+      const emails: EmailMetaData[] = found.map((email) => ({
+        createdAt: email.createdAt,
+        messageId: email.messageId,
+        subject: email.subject,
+        from: email.from,
+        to: email.to,
+        date: email.date,
+      }));
+
       return {
-        emails: emails.map((email) => ({
-          id: email.messageId,
-          subject: email.subject,
-          from: email.from,
-          to: email.to,
-          date: email.date,
-        })),
+        emails,
         total: emails.length,
       };
     }),
@@ -79,14 +91,27 @@ export const mailRouter = createTRPCRouter({
         });
       }
 
-             return {
-         text: email.text ?? "",
-         html: email.html ?? "",
-         subject: email.subject ?? "",
-         from: email.from ?? "",
-         to: email.to ?? "",
-         date: email.date,
-       };
+      // Fetch raw HTML from S3
+      const s3Client = getS3Client();
+      const { Body } = await s3Client.send(
+        new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: messageId,
+        })
+      );
+      const chunks: Buffer[] = [];
+      for await (const chunk of Body as AsyncIterable<Buffer>) {
+        chunks.push(chunk);
+      }
+      const html = Buffer.concat(chunks).toString("utf-8");
+
+      return {
+        subject: email.subject ?? "",
+        from: email.from ?? "",
+        to: email.to ?? "",
+        date: email.date,
+        html: html,
+      };
     }),
 
   // Sync messages from google API into our DB
@@ -98,11 +123,12 @@ export const mailRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const client = getGmailClient(ctx.session);
+      const gmailClient = getGmailClient(ctx.session);
+      const s3Client = getS3Client();
 
       try {
         // Get list of messages from Gmail
-        const res = await client.users.messages.list({
+        const res = await gmailClient.users.messages.list({
           userId: "me",
           maxResults: input.maxResults,
           q: input.query, // Optional search query
@@ -131,24 +157,33 @@ export const mailRouter = createTRPCRouter({
           });
 
           if (existingEmail) {
-            // Message already exists, skip
-            continue;
+            // gmail API users.messages.list fetches the messages in reverse-chronological order (newest first)
+            // so if we reach an email we already have, we can just stop.
+            break;
           }
 
           // Get full message details from Gmail
-          const messageDetails = await getMessageDetails(client, msg.id);
+          const messageDetails = await getMessageDetails(gmailClient, msg.id);
 
-          // Save to database (stub implementation)
+          // store HTML in S3. key = messageId
+          const html = messageDetails.html ? messageDetails.html : ""; // gmailapi says it can be string|false
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: msg.id,
+              Body: html,
+            })
+          );
+
+          // store metadata in our database
           await ctx.db.email.create({
             data: {
+              userId: ctx.session.user.id,
               messageId: msg.id,
               subject: messageDetails.subject,
               from: messageDetails.from,
               to: messageDetails.to,
-              text: messageDetails.text,
-              html: messageDetails.html,
               date: messageDetails.date,
-              userId: ctx.session.user.id,
             },
           });
 
