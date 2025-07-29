@@ -79,13 +79,14 @@ export const mailRouter = createTRPCRouter({
         });
       }
 
-      return {
-        text: email.text ?? "",
-        subject: email.subject ?? "",
-        from: email.from ?? "",
-        to: email.to ?? "",
-        date: email.date,
-      };
+             return {
+         text: email.text ?? "",
+         html: email.html ?? "",
+         subject: email.subject ?? "",
+         from: email.from ?? "",
+         to: email.to ?? "",
+         date: email.date,
+       };
     }),
 
   // Sync messages from google API into our DB
@@ -145,6 +146,7 @@ export const mailRouter = createTRPCRouter({
               from: messageDetails.from,
               to: messageDetails.to,
               text: messageDetails.text,
+              html: messageDetails.html,
               date: messageDetails.date,
               userId: ctx.session.user.id,
             },

@@ -1,7 +1,7 @@
 import type { Attachment } from "mailparser";
-import React from "react";
+import React, { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, Forward, Reply } from "lucide-react";
+import { ArrowLeft, Eye, FileText, Forward, Reply } from "lucide-react";
 
 import { Button } from "~/features/shared/components/ui/button";
 import { useTRPC } from "~/trpc/react";
@@ -13,17 +13,16 @@ interface EmailDetailProps {
 
 export function EmailDetail({ emailId, onBack }: EmailDetailProps) {
   const trpc = useTRPC();
+  const [viewMode, setViewMode] = useState<"html" | "text">("html");
   const { data } = useSuspenseQuery(
     trpc.mail.get.queryOptions({ messageId: emailId })
   );
-
-  // Defensive: fallback to empty object if data is undefined
 
   const subject = data.subject;
   const from = data.from;
   const to = data.to;
   const date = data.date;
-  const text = data.text;
+  const html = data.html;
   // const attachments: Attachment[] = data.attachments;
 
   return (
@@ -75,11 +74,24 @@ export function EmailDetail({ emailId, onBack }: EmailDetailProps) {
         </div>
 
         {/* Email Body */}
-        <div className="prose prose-gray dark:prose-invert max-w-none">
-          <div className="leading-relaxed whitespace-pre-wrap text-gray-900 dark:text-gray-100">
-            {text ?? "No content available"}
-          </div>
-        </div>
+        <iframe // iframe is 'separate document' so no parent styles will leak in.
+          title="Email Detail"
+          srcDoc={html}
+          sandbox="
+          allow-same-origin          /* so relative URLs, images, stylesheets resolve correctly */
+          allow-scripts              /* only if you really need JS in the email (Gmail normally strips scripts) */
+          allow-popups               /* so window.open / target=_blank works */
+          allow-popups-to-escape-sandbox /* so popups aren't forced back into the iframe context */
+          allow-forms                /* if the email contains forms you want to submit */
+          allow-modals               /* to allow alert/confirm/dialogs, if absolutely necessary */
+          allow-top-navigation-by-user-activation /* so clicking links can navigate the top-level window */
+         "
+          style={{
+            width: "100%",
+            height: "100%", // or set a fixed height
+            border: "none",
+          }}
+        />
 
         {/* Attachments */}
         {/* {attachments.length > 0 && (

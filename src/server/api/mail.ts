@@ -92,6 +92,7 @@ export async function getMessageDetails(
 
   return {
     text: parsed.text ?? "",
+    html: parsed.html ?? "",
     subject: parsed.subject ?? "",
     from,
     to,

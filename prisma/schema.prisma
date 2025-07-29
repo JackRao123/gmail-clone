@@ -83,6 +83,7 @@ model Email {
     from      String?
     to        String?
     text      String?  @db.Text
+    html      String?  @db.Text
     date      DateTime?
     userId    String
     user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
