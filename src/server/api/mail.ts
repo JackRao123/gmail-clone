@@ -96,6 +96,6 @@ export async function getMessageDetails(
     from,
     to,
     date: parsed.date,
-    attachments: parsed.attachments,
+    // attachments: parsed.attachments,
   };
 }

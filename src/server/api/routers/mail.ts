@@ -17,25 +17,25 @@ export const mailRouter = createTRPCRouter({
 
     // Retrieve list of Ids
     const messageIds = Array<string>();
-    try {
-      const res = await client.users.messages.list({
-        userId: "me",
-        maxResults: 20,
-      });
+    // try {
+    const res = await client.users.messages.list({
+      userId: "me",
+      maxResults: 20,
+    });
 
-      if (res.data.messages) {
-        for (const msg of res.data.messages) {
-          if (msg.id) {
-            messageIds.push(msg.id);
-          }
+    if (res.data.messages) {
+      for (const msg of res.data.messages) {
+        if (msg.id) {
+          messageIds.push(msg.id);
         }
       }
-    } catch (e) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: JSON.stringify(e),
-      });
     }
+    // } catch (e) {
+    // throw new TRPCError({
+    //   code: "BAD_REQUEST",
+    //   message: JSON.stringify(e),
+    // });
+    // }
 
     return {
       emails: messageIds,

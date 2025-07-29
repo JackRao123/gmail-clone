@@ -24,7 +24,7 @@ export function EmailDetail({ emailId, onBack }: EmailDetailProps) {
   const to = data.to;
   const date = data.date;
   const text = data.text;
-  const attachments: Attachment[] = data.attachments;
+  // const attachments: Attachment[] = data.attachments;
 
   return (
     <div className="flex h-full flex-col">
@@ -82,7 +82,7 @@ export function EmailDetail({ emailId, onBack }: EmailDetailProps) {
         </div>
 
         {/* Attachments */}
-        {attachments.length > 0 && (
+        {/* {attachments.length > 0 && (
           <div className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
             <h3 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
               Attachments ({attachments.length})
@@ -131,7 +131,7 @@ export function EmailDetail({ emailId, onBack }: EmailDetailProps) {
               })}
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

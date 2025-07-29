@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import React, { Suspense, useState } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 
 import ProfileMenu, { MenuOpenDirection } from "~/app/_components/ProfileMenu";
+import { LoadingSpinner } from "~/features/shared/components/LoadingSpinner";
 import { Input } from "~/features/shared/components/ui/input";
 import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
@@ -22,6 +23,7 @@ function EmailItem({ emailId, isSelected, onSelect }: EmailItemProps) {
   const { data } = useSuspenseQuery(
     trpc.mail.get.queryOptions({ messageId: emailId })
   );
+
   return (
     <div
       className={cn(
@@ -59,7 +61,7 @@ function EmailItem({ emailId, isSelected, onSelect }: EmailItemProps) {
 
 export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
   const trpc = useTRPC();
-  const { data } = useSuspenseQuery(trpc.mail.list.queryOptions());
+  const { data, isLoading } = useQuery(trpc.mail.list.queryOptions());
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (e: React.FormEvent) => {
@@ -68,30 +70,45 @@ export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
     console.log("Search:", searchQuery);
   };
 
-  const emails = Array.isArray(data?.emails) ? data.emails : [];
+  const emails = data?.emails ?? [];
 
-  if (!emails.length) {
-    return (
-      <div className="flex h-full flex-col">
-        {/* Header with Search and Profile */}
-        <div className="border-b border-gray-200 p-4 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <form onSubmit={handleSearch} className="relative mr-4 flex-1">
-              <Input
-                type="text"
-                placeholder="Search emails..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-4 pl-10"
-              />
-            </form>
-            <div className="flex-shrink-0 px-6">
-              <ProfileMenu menuOpenDirection={MenuOpenDirection.BOTTOM_LEFT} />
-            </div>
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header with Search and Profile */}
+      <div className="border-b border-gray-200 p-4 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <form onSubmit={handleSearch} className="relative mr-4 flex-1">
+            <Input
+              type="text"
+              placeholder="Search emails..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-4 pl-10"
+            />
+          </form>
+          <div className="flex-shrink-0 px-6">
+            <ProfileMenu menuOpenDirection={MenuOpenDirection.BOTTOM_LEFT} />
           </div>
         </div>
-
-        {/* Empty State */}
+      </div>
+      {/* Email List */}
+      {isLoading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      ) : emails.length !== 0 ? (
+        <div className="flex-1 overflow-auto">
+          {emails.map((emailId) => (
+            <EmailItem
+              emailId={emailId}
+              key={emailId}
+              isSelected={selectedEmailId === emailId}
+              onSelect={() => onEmailSelect(emailId)}
+            />
+          ))}
+        </div>
+      ) : (
+        // Empty State
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700">
@@ -117,41 +134,7 @@ export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
             </p>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-full flex-col">
-      {/* Header with Search and Profile */}
-      <div className="border-b border-gray-200 p-4 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <form onSubmit={handleSearch} className="relative mr-4 flex-1">
-            <Input
-              type="text"
-              placeholder="Search emails..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-4 pl-10"
-            />
-          </form>
-          <div className="flex-shrink-0 px-6">
-            <ProfileMenu menuOpenDirection={MenuOpenDirection.BOTTOM_LEFT} />
-          </div>
-        </div>
-      </div>
-
-      {/* Email List */}
-      <div className="flex-1 overflow-auto">
-        {emails.map((emailId) => (
-          <EmailItem
-            key={emailId}
-            emailId={emailId}
-            isSelected={selectedEmailId === emailId}
-            onSelect={() => onEmailSelect(emailId)}
-          />
-        ))}
-      </div>
+      )}
     </div>
   );
 }
