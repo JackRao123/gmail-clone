@@ -20,13 +20,13 @@ const RefreshTokenResponseSchema = z.object({
  */
 declare module "next-auth" {
   interface Session extends DefaultSession {
+    error?: string;
     user: {
       id: string;
       // ...other properties
       // role: UserRole;
       accessToken: string;
       refreshToken: string;
-      error?: "RefreshTokenError";
     } & DefaultSession["user"];
   }
 
@@ -80,7 +80,8 @@ export const authConfig = {
       });
 
       if (!acct) {
-        throw new Error("Could not find google account");
+        session.error = "NoGoogleAccount";
+        return session;
       }
 
       // if the token has already expired we need to refresh it
