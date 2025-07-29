@@ -22,6 +22,7 @@ interface EmailItemProps {
 function EmailItem({ email, isSelected, onSelect }: EmailItemProps) {
   return (
     <div
+    
       className={cn(
         "flex cursor-pointer items-center space-x-4 border-b border-gray-100 p-4 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800",
         isSelected &&
@@ -29,6 +30,7 @@ function EmailItem({ email, isSelected, onSelect }: EmailItemProps) {
       )}
       onClick={onSelect}
     >
+
       <div className="flex-shrink-0">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-300 text-sm font-medium text-gray-700 dark:bg-gray-600 dark:text-gray-300">
           {email.from?.charAt(0).toUpperCase() ?? "?"}
@@ -46,11 +48,12 @@ function EmailItem({ email, isSelected, onSelect }: EmailItemProps) {
         </div>
         <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
           {email.subject ?? "No subject"}
+           
         </p>
         <p className="truncate text-sm text-gray-600 dark:text-gray-300">
           {/* Note: We don't have text preview in the list view anymore */}
           Click to view email content
-        </p>
+         </p>
       </div>
     </div>
   );
@@ -58,7 +61,7 @@ function EmailItem({ email, isSelected, onSelect }: EmailItemProps) {
 
 export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
   const trpc = useTRPC();
-  const { data, isLoading } = useQuery(trpc.mail.list.queryOptions({}));
+  const { data, isLoading } = useQuery(trpc.mail.list_inbox.queryOptions({}));
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (e: React.FormEvent) => {

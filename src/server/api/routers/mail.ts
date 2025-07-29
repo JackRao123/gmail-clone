@@ -10,7 +10,12 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
-import { getGmailClient, getMessageDetails, getS3Client } from "../mail";
+import {
+  getGmailClient,
+  getMessageDetails,
+  getS3Client,
+  listEmails,
+} from "../mail";
 
 export interface EmailMetaData {
   createdAt: Date;
@@ -23,50 +28,59 @@ export interface EmailMetaData {
 
 export const mailRouter = createTRPCRouter({
   // Fetch emails from database
-  list: protectedProcedure
+  list_inbox: protectedProcedure
     .input(
       z.object({
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
-        useDatabase: z.boolean().default(true), // Whether to fetch from DB or Gmail API
       })
     )
     .query(async ({ ctx, input }) => {
       // Fetch from database
-      const found = await ctx.db.email.findMany({
-        where: {
-          userId: ctx.session.user.id,
-        },
-        orderBy: {
-          date: "desc",
-        },
-        take: input.limit,
-        skip: input.offset,
-        select: {
-          messageId: true,
-          subject: true,
-          from: true,
-          to: true,
-          date: true,
-          createdAt: true,
-        },
-      });
 
-      const emails: EmailMetaData[] = found.map((email) => ({
-        createdAt: email.createdAt,
-        messageId: email.messageId,
-        subject: email.subject,
-        from: email.from,
-        to: email.to,
-        date: email.date,
-      }));
-
-      return {
-        emails,
-        total: emails.length,
-      };
+      return await listEmails(
+        ctx.session.user.id,
+        input.limit,
+        input.offset,
+        "INBOX"
+      );
     }),
 
+  // list_sent: protectedProcedure
+  //   .input(
+  //     z.object({
+  //       limit: z.number().min(1).max(100).default(20),
+  //       offset: z.number().min(0).default(0),
+  //     })
+  //   )
+  //   .query(async ({ ctx, input }) => {
+  //     // Fetch from database
+
+  //     return await listEmails(
+  //       ctx.session.user.id,
+  //       input.limit,
+  //       input.offset,
+  //       "SENT"
+  //     );
+  //   }),
+
+  // list_drafts: protectedProcedure
+  //   .input(
+  //     z.object({
+  //       limit: z.number().min(1).max(100).default(20),
+  //       offset: z.number().min(0).default(0),
+  //     })
+  //   )
+  //   .query(async ({ ctx, input }) => {
+  //     // Fetch from database
+
+  //     return await listEmails(
+  //       ctx.session.user.id,
+  //       input.limit,
+  //       input.offset,
+  //       "DRAFT"
+  //     );
+  //   }),
   // Fetch email details from database
   get: protectedProcedure
     .input(
@@ -184,6 +198,7 @@ export const mailRouter = createTRPCRouter({
               from: messageDetails.from,
               to: messageDetails.to,
               date: messageDetails.date,
+              labels: messageDetails.labels,
             },
           });
 

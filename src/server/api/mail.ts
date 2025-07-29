@@ -1,8 +1,11 @@
+import type { EmailMetaData } from "./routers/mail";
 import type { Session } from "next-auth";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { TRPCError } from "@trpc/server";
 import { gmail_v1, google } from "googleapis";
 import { simpleParser } from "mailparser";
+
+import { db } from "../db";
 
 /**
  *
@@ -111,6 +114,11 @@ export async function getMessageDetails(
     }
   }
 
+  // https://developers.google.com/workspace/gmail/api/guides/labels
+  // labels are string literals like INBOX, SENT, ...
+  const labels = res.data.labelIds ?? [];
+  console.log(`Label ids  = ${JSON.stringify(labels, null, 2)}`);
+
   return {
     // text: parsed.text ?? "",
     html: parsed.html ?? "",
@@ -118,6 +126,51 @@ export async function getMessageDetails(
     from,
     to,
     date: parsed.date,
+    labels: labels,
     // attachments: parsed.attachments,
+  };
+}
+
+export async function listEmails(
+  userId: string,
+  limit: number,
+  offset: number,
+  labelFilter: string
+) {
+  const found = await db.email.findMany({
+    where: {
+      userId: userId,
+    },
+    orderBy: {
+      date: "desc",
+    },
+    take: limit,
+    skip: offset,
+    select: {
+      messageId: true,
+      subject: true,
+      from: true,
+      to: true,
+      date: true,
+      createdAt: true,
+      labels: true,
+    },
+  });
+
+  // filter for emails that have a label matching the labelFilter
+  const emails: EmailMetaData[] = found
+    .filter((email) => email.labels.includes(labelFilter))
+    .map((email) => ({
+      createdAt: email.createdAt,
+      messageId: email.messageId,
+      subject: email.subject,
+      from: email.from,
+      to: email.to,
+      date: email.date,
+    }));
+
+  return {
+    emails,
+    total: emails.length,
   };
 }

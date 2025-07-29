@@ -24,7 +24,9 @@ export function EmailInterface() {
   };
 
   const handleRefresh = () => {
-    void queryClient.invalidateQueries({ queryKey: trpc.mail.list.queryKey() });
+    void queryClient.invalidateQueries({
+      queryKey: trpc.mail.list_inbox.queryKey(),
+    });
   };
 
   const handleCompose = () => {
@@ -43,7 +45,7 @@ export function EmailInterface() {
         console.log("Sync result:", result);
         // Refresh the email list after sync
         void queryClient.invalidateQueries({
-          queryKey: trpc.mail.list.queryKey(),
+          queryKey: trpc.mail.list_inbox.queryKey(),
         });
       },
       onError: (error) => {
@@ -68,7 +70,7 @@ export function EmailInterface() {
         console.log(`Deleted ${result.count} emails`);
         // Refresh the email list after sync
         void queryClient.invalidateQueries({
-          queryKey: trpc.mail.list.queryKey(),
+          queryKey: trpc.mail.list_inbox.queryKey(),
         });
       },
       onError: (error) => {

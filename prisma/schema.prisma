@@ -85,6 +85,7 @@ model Email {
     from      String?
     to        String?
     date      DateTime?
+    labels    String[]
 
     user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     createdAt DateTime @default(now())
