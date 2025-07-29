@@ -74,17 +74,28 @@ export async function getMessageDetails(
   const rawEmailData = decodeBase64Url(res.data.raw!);
   const parsed = await simpleParser(rawEmailData);
 
+  const from = parsed.from?.text ?? "";
+  let to = ""; // it can be AddressObject | AddressObject[] | undefined
+  if (parsed.to && typeof parsed.to === "object" && !Array.isArray(parsed.to)) {
+    const toObj = parsed.to;
+    if (
+      Array.isArray(toObj.value) &&
+      toObj.value.length > 0 &&
+      toObj.value[0] &&
+      typeof toObj.value[0].address === "string"
+    ) {
+      to = toObj.value[0].address;
+    } else if (typeof toObj.text === "string") {
+      to = toObj.text;
+    }
+  }
+
   return {
     text: parsed.text ?? "",
-    subject: parsed.subject,
-    from: Array.isArray(parsed.from) ? parsed.from[0]?.text : parsed.from?.text,
-    to: Array.isArray(parsed.to) ? parsed.to[0]?.text : parsed.to?.text,
+    subject: parsed.subject ?? "",
+    from,
+    to,
     date: parsed.date,
-    attachments:
-      parsed.attachments?.map((att) => ({
-        filename: att.filename,
-        contentType: att.contentType,
-        size: att.size,
-      })) || [],
+    attachments: parsed.attachments,
   };
 }

@@ -20,7 +20,7 @@ export function EmailInterface() {
   };
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["mail.list"] });
+    void queryClient.invalidateQueries({ queryKey: ["mail.list"] });
   };
 
   const handleCompose = () => {

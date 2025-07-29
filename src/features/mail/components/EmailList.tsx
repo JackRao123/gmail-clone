@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
 
 import ProfileMenu, { MenuOpenDirection } from "~/app/_components/ProfileMenu";
 import { Input } from "~/features/shared/components/ui/input";
@@ -23,7 +22,6 @@ function EmailItem({ emailId, isSelected, onSelect }: EmailItemProps) {
   const { data } = useSuspenseQuery(
     trpc.mail.get.queryOptions({ messageId: emailId })
   );
-
   return (
     <div
       className={cn(
@@ -35,24 +33,24 @@ function EmailItem({ emailId, isSelected, onSelect }: EmailItemProps) {
     >
       <div className="flex-shrink-0">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-300 text-sm font-medium text-gray-700 dark:bg-gray-600 dark:text-gray-300">
-          {data.from?.charAt(0).toUpperCase() || "?"}
+          {data.from.charAt(0).toUpperCase() ?? "?"}
         </div>
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between">
           <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-            {data.from || "Unknown Sender"}
+            {data.from}
           </p>
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {data.date ? new Date(data.date).toLocaleDateString() : ""}
           </span>
         </div>
         <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-          {data.subject || "No Subject"}
+          {data.subject}
         </p>
         <p className="truncate text-sm text-gray-600 dark:text-gray-300">
-          {data.text?.substring(0, 120) || "No preview available"}
+          {data.text.substring(0, 120) ?? "No preview available"}
         </p>
       </div>
     </div>
@@ -70,7 +68,9 @@ export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
     console.log("Search:", searchQuery);
   };
 
-  if (!data.emails.length) {
+  const emails = Array.isArray(data?.emails) ? data.emails : [];
+
+  if (!emails.length) {
     return (
       <div className="flex h-full flex-col">
         {/* Header with Search and Profile */}
@@ -143,7 +143,7 @@ export function EmailList({ selectedEmailId, onEmailSelect }: EmailListProps) {
 
       {/* Email List */}
       <div className="flex-1 overflow-auto">
-        {data.emails.map((emailId) => (
+        {emails.map((emailId) => (
           <EmailItem
             key={emailId}
             emailId={emailId}
