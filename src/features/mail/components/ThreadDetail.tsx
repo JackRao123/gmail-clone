@@ -58,7 +58,7 @@ function EmailFrame({ html }: { html: string }) {
     const doc = parser.parseFromString(html, "text/html");
 
     const quoteElement = doc.querySelector(".gmail_quote");
-    const quoteBlock = quoteElement?.outerHTML || null;
+    const quoteBlock = quoteElement?.outerHTML ?? null;
 
     // Remove the quote from the main content
     if (quoteElement) {
@@ -134,6 +134,11 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
       <div className="flex-1 space-y-6 overflow-auto p-4">
         {threadEmails.map((email) => (
           <div key={email.messageId} className="thread-message">
+            {email.subject && (
+              <h4 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
+                {email.subject}
+              </h4>
+            )}
             <div className="border-b border-gray-200 pb-4 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div>
@@ -153,11 +158,6 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
                   </Button>
                 </div>
               </div>
-              {email.subject && (
-                <h4 className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {email.subject}
-                </h4>
-              )}
             </div>
 
             <EmailFrame html={email.html} />
