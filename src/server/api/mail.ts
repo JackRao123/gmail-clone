@@ -253,9 +253,9 @@ export async function listThreads(
       },
     },
     orderBy: {
-      // when we sync threads from the server, we receive the newest ones first
-      // this means the newest ones are updated first and will have the lowest value of updatedAt
-      updatedAt: "asc",
+      // Order by lastUpdate (when the last message was sent/received)
+      // Most recent threads first
+      lastUpdate: "desc",
     },
     take: limit,
     skip: offset,
@@ -280,7 +280,7 @@ export async function listThreads(
       snippet: snippet,
       from: latestEmail?.from ?? "",
       to: latestEmail?.to ?? "",
-      date: latestEmail?.date ?? thread.updatedAt,
+      date:  thread.lastUpdate,
       emailCount: thread.emails.length,
       unreadCount,
       labels: thread.labels,

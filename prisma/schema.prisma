@@ -83,11 +83,10 @@ model Thread {
     snippet   String? // Thread snippet from Gmail
     historyId String? // Gmail history ID for sync
     labels    String[] // Union of labels of all its messages 
+    lastUpdate DateTime? // When the last message in the thread was sent/received
 
     user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     emails    Email[]
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
 
     @@index([userId])
     @@index([threadId])
