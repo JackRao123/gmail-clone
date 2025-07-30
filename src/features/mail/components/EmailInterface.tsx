@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "~/features/shared/components/ui/skeleton";
 import { useTRPC } from "~/trpc/react";
 
+import { ComposeEmail } from "./ComposeEmail";
 import { EmailToolbar } from "./EmailToolbar";
 import { ThreadDetail } from "./ThreadDetail";
 import { ThreadList } from "./ThreadList";
@@ -14,6 +15,8 @@ export function EmailInterface() {
   >();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [isComposeMinimized, setIsComposeMinimized] = useState(false);
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
@@ -32,8 +35,8 @@ export function EmailInterface() {
   };
 
   const handleCompose = () => {
-    // TODO: Implement compose functionality
-    console.log("Compose clicked");
+    setIsComposeOpen(true);
+    setIsComposeMinimized(false);
   };
 
   const handleSearch = (query: string) => {
@@ -128,6 +131,14 @@ export function EmailInterface() {
           </Suspense>
         )}
       </div>
+
+      {/* Compose Email */}
+      <ComposeEmail
+        isOpen={isComposeOpen}
+        onClose={() => setIsComposeOpen(false)}
+        onToggleMinimize={() => setIsComposeMinimized(!isComposeMinimized)}
+        isMinimized={isComposeMinimized}
+      />
     </div>
   );
 }
