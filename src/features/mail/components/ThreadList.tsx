@@ -1,4 +1,5 @@
 import type { ThreadMetaData } from "~/server/api/mail";
+import type { FormEvent } from "react";
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -66,7 +67,7 @@ export function ThreadList({
   const { data, isLoading } = useQuery(trpc.mail.list_threads.queryOptions({}));
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     // TODO: Implement search functionality
     console.log("Search:", searchQuery);

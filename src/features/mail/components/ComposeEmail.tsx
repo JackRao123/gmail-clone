@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Send, X } from "lucide-react";
@@ -141,9 +142,7 @@ export function ComposeEmail({
               <textarea
                 placeholder="Write your message here..."
                 value={formData.body}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  handleInputChange("body", e.target.value)
-                }
+                onChange={(e) => handleInputChange("body", e.target.value)}
                 className="min-h-32 w-full resize-none border-0 px-0 py-2 focus:ring-0 dark:bg-transparent"
                 rows={8}
               />

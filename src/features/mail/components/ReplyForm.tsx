@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Send, X } from "lucide-react";
 import { toast } from "sonner";
@@ -36,13 +36,13 @@ export function ReplyForm({
   const extractEmailAddress = (emailString: string | null): string => {
     if (!emailString) return "";
 
-    // Try to extract email from format like "John Doe <john@example.com>"
-    const emailMatch = emailString.match(/<([^>]+)>/);
-    if (emailMatch && emailMatch[1]) {
-      return emailMatch[1];
+    const bracketRegex = /<([^>]+)>/;
+    const match = bracketRegex.exec(emailString);
+    if (match?.[1]) {
+      return match[1];
     }
 
-    // If no angle brackets, check if it's a valid email
+    // Fallback: if the whole string is a valid email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (emailRegex.test(emailString)) {
       return emailString;
@@ -52,14 +52,14 @@ export function ReplyForm({
   };
 
   // Initialize form data when component opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       // Set the recipient to the original sender (extract email only)
       const recipient = extractEmailAddress(originalEmail.from);
       // Add "Re: " prefix to subject if it doesn't already have it
       const subject = originalEmail.subject?.startsWith("Re:")
         ? originalEmail.subject
-        : `Re: ${originalEmail.subject || ""}`;
+        : `Re: ${originalEmail.subject ?? ""}`;
 
       setFormData({
         to: recipient,
@@ -146,7 +146,7 @@ export function ReplyForm({
           <textarea
             placeholder="Write your reply..."
             value={formData.body}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+            onChange={(e) =>
               setFormData((prev) => ({ ...prev, body: e.target.value }))
             }
             className="min-h-24 w-full resize-none border-0 px-0 py-2 focus:ring-0 dark:bg-transparent"

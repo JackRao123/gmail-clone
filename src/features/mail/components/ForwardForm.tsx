@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Send, X } from "lucide-react";
 import { toast } from "sonner";
@@ -30,23 +30,23 @@ export function ForwardForm({
     body: "",
   });
   const trpc = useTRPC();
-  const editorRef = React.useRef<HTMLDivElement>(null); // so that cursor doesn't jump around when the user edits HTML
+  const editorRef = useRef<HTMLDivElement>(null); // so that cursor doesn't jump around when the user edits HTML
 
   // Initialize form data when component opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       // Set the subject with "Fwd:" prefix
       const subject = originalEmail.subject?.startsWith("Fwd:")
         ? originalEmail.subject
-        : `Fwd: ${originalEmail.subject || ""}`;
+        : `Fwd: ${originalEmail.subject ?? ""}`;
 
       // Create forwarded message content
       const forwardedContent = ` 
         <p><strong>---------- Forwarded message ---------</strong></p>
-        <p><strong>From:</strong> ${originalEmail.from || "Unknown"}</p>
+        <p><strong>From:</strong> ${originalEmail.from ?? "Unknown"}</p>
         <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>Subject:</strong> ${originalEmail.subject || "No subject"}</p>
-        <p><strong>To:</strong> ${originalEmail.to || "Unknown"}</p>
+        <p><strong>Subject:</strong> ${originalEmail.subject ?? "No subject"}</p>
+        <p><strong>To:</strong> ${originalEmail.to ?? "Unknown"}</p>
         <br>
         ${originalEmail.html}
       `;
