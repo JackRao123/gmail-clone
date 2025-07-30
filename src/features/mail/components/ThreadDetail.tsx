@@ -32,7 +32,7 @@ export const getSenderDisplay = (from: string | null): string => {
 };
 
 // Auto-resizing iframe component to eliminate inner scrollbars
-function EmailFrame({ html }: { html: string }) {
+function EmailFrame({ html, forwarded }: { html: string; forwarded: boolean }) {
   // This is to resize the iframe so it takes up full size and there is no scrollbars
   const onLoad = useCallback((e: React.SyntheticEvent<HTMLIFrameElement>) => {
     const iframe = e.currentTarget;
@@ -55,12 +55,6 @@ function EmailFrame({ html }: { html: string }) {
 
   // parse the provided html into the main message, and the quoted content
   const { mainContent, quoteBlock } = useMemo(() => {
-    // check for if message is forwarded
-    // if so, then mainContent will be like empty, and the content we want to see is actually the quoted section
-    if (html.includes("---------- Forwarded message ---------")) {
-      return { mainContent: html, quoteBlock: null };
-    }
-
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
     const quoteElement = doc.querySelector(".gmail_quote");
@@ -72,8 +66,22 @@ function EmailFrame({ html }: { html: string }) {
     }
     const mainContent = doc.documentElement.outerHTML;
 
+    // // check for if email is forwarded
+    // // if maincontent looks something like this for example `<html><head></head><body><div dir="ltr"><br><br></div></body></html>`
+    // const stripped = mainContent
+    //   .replace(/<br\s*\/?>/gi, "") // remove <br> or <br/>
+    //   .replace(/<[^>]+>/g, "") // remove any other tags
+    //   .trim();
+    // if (stripped.length === 0) {
+    //   return { mainContent: html, quoteBlock: null };
+    // }
+
+    if (forwarded) {
+      return { mainContent: html, quoteBlock: null };
+    }
+
     return { mainContent, quoteBlock };
-  }, [html]);
+  }, [html, forwarded]);
 
   const [showQuote, setShowQuote] = useState(false);
 
@@ -166,7 +174,10 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
               </div>
             </div>
 
-            <EmailFrame html={email.html} />
+            <EmailFrame
+              html={email.html}
+              forwarded={email.subject?.startsWith("Fwd:") ?? false}
+            />
           </div>
         ))}
       </div>

@@ -287,7 +287,7 @@ export async function listThreads(
       snippet: snippet,
       from: latestEmail?.from ?? "",
       to: latestEmail?.to ?? "",
-      date: latestEmail?.date,
+      date: latestEmail?.date ?? null,
       emailCount: thread.emails.length,
       unreadCount,
       labels: thread.labels,
