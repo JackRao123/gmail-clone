@@ -240,6 +240,9 @@ export async function listThreads(
   const threads = await db.thread.findMany({
     where: {
       userId: userId,
+      labels: {
+        has: labelFilter,
+      },
     },
     include: {
       emails: {
