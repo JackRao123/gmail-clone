@@ -33,6 +33,7 @@ export const getSenderDisplay = (from: string | null): string => {
 
 // Auto-resizing iframe component to eliminate inner scrollbars
 function EmailFrame({ html }: { html: string }) {
+  // This is to resize the iframe so it takes up full size and there is no scrollbars
   const onLoad = useCallback((e: React.SyntheticEvent<HTMLIFrameElement>) => {
     const iframe = e.currentTarget;
     const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
@@ -54,9 +55,14 @@ function EmailFrame({ html }: { html: string }) {
 
   // parse the provided html into the main message, and the quoted content
   const { mainContent, quoteBlock } = useMemo(() => {
+    // check for if message is forwarded
+    // if so, then mainContent will be like empty, and the content we want to see is actually the quoted section
+    if (html.includes("---------- Forwarded message ---------")) {
+      return { mainContent: html, quoteBlock: null };
+    }
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
-
     const quoteElement = doc.querySelector(".gmail_quote");
     const quoteBlock = quoteElement?.outerHTML ?? null;
 
