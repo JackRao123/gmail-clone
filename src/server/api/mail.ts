@@ -183,6 +183,7 @@ export interface ThreadMetaData {
   date: Date | null;
   emailCount: number;
   unreadCount: number;
+  labels: string[];
 }
 
 /**
@@ -201,10 +202,12 @@ export async function getThreadDetails(
   });
 
   const thread = res.data;
-
-  console.log(`Thread = ${JSON.stringify(thread, null, 2)}`);
+  const threadLabels = new Set<string>();
 
   const messages = thread.messages ?? [];
+  messages // thread labels is union of message labels
+    .flatMap((m) => m.labelIds ?? [])
+    .forEach((labelId) => threadLabels.add(labelId));
 
   return {
     threadId: thread.id!,
@@ -216,6 +219,7 @@ export async function getThreadDetails(
       snippet: msg.snippet ?? "",
     })),
     historyId: thread.historyId,
+    labels: Array.from(threadLabels),
   };
 }
 
@@ -276,6 +280,7 @@ export async function listThreads(
       date: latestEmail?.date ?? thread.updatedAt,
       emailCount: thread.emails.length,
       unreadCount,
+      labels: thread.labels,
     };
   });
 
@@ -314,41 +319,51 @@ export async function syncThreads(
     // todo - figure out how to efficiently sync
 
     // Check if thread already exists
-    // const existingThread = await db.thread.findUnique({
-    //   where: {
-    //     threadId: gmailThread.id,
-    //     userId: userId,
-    //   },
-    // });
+    const existingThread = await db.thread.findUnique({
+      where: {
+        threadId: gmailThread.id,
+        userId: userId,
+      },
+    });
 
-    // if (existingThread) {
-    //   // If we reach an existing thread, we can stop (threads are ordered by recent activity)
-    //   break;
-    // }
+    if (existingThread && existingThread.historyId === gmailThread.historyId) {
+      // thread in DB exists AND it is up to date
+      continue;
+    }
 
     // Get full thread details
     const threadDetails = await getThreadDetails(client, gmailThread.id);
 
     // Create thread in database
-    const thread = await db.thread.create({
-      data: {
+    const thread = await db.thread.upsert({
+      where: {
+        threadId: threadDetails.threadId,
+      },
+      create: {
         threadId: threadDetails.threadId,
         userId: userId,
         snippet: threadDetails.snippet,
         historyId: threadDetails.historyId,
+        labels: threadDetails.labels,
+      },
+      update: {
+        snippet: threadDetails.snippet,
+        historyId: threadDetails.historyId,
+        labels: threadDetails.labels,
       },
     });
 
     // Process each message in the thread
     for (const messageInfo of threadDetails.messages) {
       // Check if message already exists
-      // const existingEmail = await db.email.findUnique({
-      //   where: {
-      //     messageId: messageInfo.messageId,
-      //   },
-      // });
+      const existingEmail = await db.email.findUnique({
+        where: {
+          messageId: messageInfo.messageId,
+        },
+      });
 
-      // if (existingEmail) continue;
+      // emails cannot be edited (unless they are drafts - which we dont have to consider)
+      if (existingEmail) continue;
 
       // Get full message details
       const messageDetails = await getMessageDetails(
