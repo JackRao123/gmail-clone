@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
 import React, { useCallback, useMemo, useState } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, Forward, Reply } from "lucide-react";
+import { useSession } from "next-auth/react";
 
+import { LoadingSpinner } from "~/features/shared/components/LoadingSpinner";
 import { Button } from "~/features/shared/components/ui/button";
 import { useTRPC } from "~/trpc/react";
 
@@ -132,10 +135,17 @@ interface ThreadDetailProps {
   onBack: () => void;
 }
 export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
+  // const session = useSession();
+  // console.log(`the session is ${JSON.stringify(session, null, 2)}`);
+
   const trpc = useTRPC();
   const { data: threadEmails } = useSuspenseQuery(
-    trpc.mail.get_thread_emails.queryOptions({ threadId })
+    trpc.mail.get_thread_emails.queryOptions(
+      { threadId }
+      // { enabled: session.status === "authenticated" }
+    )
   );
+
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [forwardingTo, setForwardingTo] = useState<string | null>(null);
 

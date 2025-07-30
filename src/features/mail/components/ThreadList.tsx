@@ -1,7 +1,7 @@
 import type { ThreadMetaData } from "~/server/api/mail";
 import type { FormEvent } from "react";
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import ProfileMenu, { MenuOpenDirection } from "~/app/_components/ProfileMenu";
@@ -63,7 +63,7 @@ function ThreadItem({ thread, isSelected }: ThreadItemProps) {
 
 export function ThreadList() {
   const trpc = useTRPC();
-  const { data, isLoading } = useQuery(trpc.mail.list_threads.queryOptions({}));
+  const { data } = useSuspenseQuery(trpc.mail.list_threads.queryOptions({}));
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (e: FormEvent) => {
@@ -95,11 +95,7 @@ export function ThreadList() {
       </div>
 
       {/* Thread List */}
-      {isLoading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <LoadingSpinner />
-        </div>
-      ) : threads.length !== 0 ? (
+      {threads.length !== 0 ? (
         <div className="flex-1 overflow-auto">
           {threads.map((thread) => (
             <ThreadItem
