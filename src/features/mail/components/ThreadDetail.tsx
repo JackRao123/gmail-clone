@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, Forward, Reply } from "lucide-react";
 
@@ -33,14 +33,16 @@ export const getSenderDisplay = (from: string | null): string => {
 
 // Auto-resizing iframe component to eliminate inner scrollbars
 function EmailFrame({ html }: { html: string }) {
-  const onLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
+  const onLoad = useCallback((e: React.SyntheticEvent<HTMLIFrameElement>) => {
     const iframe = e.currentTarget;
     const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
     if (doc) {
       // hide internal scrollbars
       doc.documentElement.style.overflow = "hidden";
       doc.body.style.margin = "0";
+      doc.body.style.padding = "0";
       doc.body.style.overflow = "hidden";
+
       // adjust height to content
       const height = Math.max(
         doc.documentElement.scrollHeight,
@@ -48,26 +50,63 @@ function EmailFrame({ html }: { html: string }) {
       );
       iframe.style.height = height + "px";
     }
-  };
+  }, []);
+
+  // parse the provided html into the main message, and the quoted content
+  const { mainContent, quoteBlock } = useMemo(() => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    const quoteElement = doc.querySelector(".gmail_quote");
+    const quoteBlock = quoteElement?.outerHTML || null;
+
+    // Remove the quote from the main content
+    if (quoteElement) {
+      quoteElement.remove();
+    }
+    const mainContent = doc.documentElement.outerHTML;
+
+    return { mainContent, quoteBlock };
+  }, [html]);
+
+  const [showQuote, setShowQuote] = useState(false);
 
   return (
-    <iframe
-      title="email"
-      srcDoc={html}
-      sandbox={`allow-same-origin
-         allow-popups
-         allow-forms
-         allow-scripts
-         allow-popups-to-escape-sandbox
-         allow-top-navigation-by-user-activation`}
-      style={{
-        width: "100%",
-        border: "none",
-        overflow: "hidden",
-      }}
-      // scrolling="no"
-      onLoad={onLoad}
-    />
+    <div>
+      {/* Iframe necessary for parent styles to not interfere with email HTML */}
+      <iframe
+        title="email"
+        srcDoc={mainContent}
+        onLoad={onLoad}
+        sandbox={`
+        allow-same-origin
+        allow-popups
+        allow-forms
+        allow-scripts
+        allow-popups-to-escape-sandbox
+        allow-top-navigation-by-user-activation
+      `}
+        className="w-full border-none"
+      />
+      {quoteBlock && (
+        <div className="mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowQuote(!showQuote)}
+            className="mb-2"
+          >
+            {showQuote ? "Hide" : "Show"} quoted content
+          </Button>
+          {showQuote && (
+            <div
+              className="border-l-4 border-gray-300 bg-gray-50 py-2 pl-4 dark:border-gray-600 dark:bg-gray-800"
+              dangerouslySetInnerHTML={{ __html: quoteBlock }}
+            />
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
