@@ -202,12 +202,18 @@ export async function getThreadDetails(
   });
 
   const thread = res.data;
-  const threadLabels = new Set<string>();
-
   const messages = thread.messages ?? [];
-  messages // thread labels is union of message labels
-    .flatMap((m) => m.labelIds ?? [])
-    .forEach((labelId) => threadLabels.add(labelId));
+
+  const threadLabels = new Set<string>(
+    messages.flatMap((m) => m.labelIds ?? [])
+  );
+  // thread labels is union of message labels
+
+  const latestTs = messages.reduce((maxTs, msg) => {
+    // parse the internalDate (string of epoch ms) into a number
+    const ts = msg.internalDate ? Number(msg.internalDate) : 0;
+    return ts > maxTs ? ts : maxTs;
+  }, 0);
 
   return {
     threadId: thread.id!,
@@ -220,6 +226,7 @@ export async function getThreadDetails(
     })),
     historyId: thread.historyId,
     labels: Array.from(threadLabels),
+    lastUpdate: latestTs,
   };
 }
 
@@ -280,7 +287,7 @@ export async function listThreads(
       snippet: snippet,
       from: latestEmail?.from ?? "",
       to: latestEmail?.to ?? "",
-      date:  thread.lastUpdate,
+      date: latestEmail?.date,
       emailCount: thread.emails.length,
       unreadCount,
       labels: thread.labels,
@@ -348,11 +355,13 @@ export async function syncThreads(
         snippet: threadDetails.snippet,
         historyId: threadDetails.historyId,
         labels: threadDetails.labels,
+        lastUpdate: threadDetails.lastUpdate,
       },
       update: {
         snippet: threadDetails.snippet,
         historyId: threadDetails.historyId,
         labels: threadDetails.labels,
+        lastUpdate: threadDetails.lastUpdate,
       },
     });
 
