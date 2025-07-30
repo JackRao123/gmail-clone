@@ -141,4 +141,55 @@ export const mailRouter = createTRPCRouter({
       count: deleted.count,
     };
   }),
+
+  // send an email
+  send: protectedProcedure
+    .input(
+      z.object({
+        to: z.string().email(),
+        subject: z.string().min(1),
+        body: z.string().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const gmailClient = getGmailClient(ctx.session);
+
+      try {
+        // Create the email message in RFC 2822 format
+        const message = [
+          `To: ${input.to}`,
+          `Subject: ${input.subject}`,
+          "MIME-Version: 1.0",
+          "Content-Type: text/html; charset=utf-8",
+          "",
+          input.body,
+        ].join("\r\n");
+
+        // Encode the message in base64url format
+        const encodedMessage = Buffer.from(message)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        // Send the email using Gmail API
+        const response = await gmailClient.users.messages.send({
+          userId: "me",
+          requestBody: {
+            raw: encodedMessage,
+          },
+        });
+
+        return {
+          success: true,
+          messageId: response.data.id,
+          threadId: response.data.threadId,
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to send email: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
+    }),
 });

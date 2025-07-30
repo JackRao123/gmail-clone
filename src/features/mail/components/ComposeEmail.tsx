@@ -1,8 +1,11 @@
 import React, { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Send, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "~/features/shared/components/ui/button";
 import { Input } from "~/features/shared/components/ui/input";
+import { useTRPC } from "~/trpc/react";
 
 interface ComposeEmailProps {
   isOpen: boolean;
@@ -22,6 +25,7 @@ export function ComposeEmail({
     subject: "",
     body: "",
   });
+  const trpc = useTRPC();
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({
@@ -30,11 +34,35 @@ export function ComposeEmail({
     }));
   };
 
+  const sendMutation = useMutation(
+    trpc.mail.send.mutationOptions({
+      onSuccess: (result) => {
+        console.log("Email sent successfully:", result);
+        toast.success("Email sent successfully!");
+        // Reset form and close compose window
+        setFormData({ to: "", subject: "", body: "" });
+        onClose();
+      },
+      onError: (error) => {
+        console.error("Failed to send email:", error);
+        toast.error(`Failed to send email: ${error.message}`);
+      },
+    })
+  );
+
   const handleSend = () => {
-    // TODO: Implement send functionality
-    console.log("Sending email:", formData);
-    // For now, just close the compose window
-    onClose();
+    // Validate form data
+    if (!formData.to) {
+      toast.error("Please specify a recipient");
+      return;
+    }
+
+    // Send the email
+    sendMutation.mutate({
+      to: formData.to,
+      subject: formData.subject,
+      body: formData.body,
+    });
   };
 
   const handleClose = () => {
@@ -127,10 +155,11 @@ export function ComposeEmail({
                 <Button
                   onClick={handleSend}
                   size="sm"
-                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={sendMutation.isPending}
+                  className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Send className="mr-2 h-4 w-4" />
-                  Send
+                  {sendMutation.isPending ? "Sending..." : "Send"}
                 </Button>
               </div>
             </div>
