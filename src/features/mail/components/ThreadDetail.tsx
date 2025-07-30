@@ -3,8 +3,10 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, Forward, Reply } from "lucide-react";
 
 import { Button } from "~/features/shared/components/ui/button";
-import { ReplyForm } from "./ReplyForm";
 import { useTRPC } from "~/trpc/react";
+
+import { ForwardForm } from "./ForwardForm";
+import { ReplyForm } from "./ReplyForm";
 
 // formats the date into a string
 export const formatDate = (date: Date | null) => {
@@ -135,6 +137,7 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
     trpc.mail.get_thread_emails.queryOptions({ threadId })
   );
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [forwardingTo, setForwardingTo] = useState<string | null>(null);
 
   return (
     <div className="flex h-full flex-col">
@@ -166,14 +169,30 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
-                    onClick={() => setReplyingTo(replyingTo === email.messageId ? null : email.messageId)}
+                    onClick={() => {
+                      setForwardingTo(null);
+                      setReplyingTo(
+                        replyingTo === email.messageId ? null : email.messageId
+                      );
+                    }}
                   >
                     <Reply className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setReplyingTo(null);
+                      setForwardingTo(
+                        forwardingTo === email.messageId
+                          ? null
+                          : email.messageId
+                      );
+                    }}
+                  >
                     <Forward className="h-4 w-4" />
                   </Button>
                 </div>
@@ -197,6 +216,19 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
                 messageId: email.messageId,
               }}
               threadId={threadId}
+            />
+
+            {/* Forward Form */}
+            <ForwardForm
+              isOpen={forwardingTo === email.messageId}
+              onClose={() => setForwardingTo(null)}
+              originalEmail={{
+                from: email.from,
+                to: email.to,
+                subject: email.subject,
+                html: email.html,
+                messageId: email.messageId,
+              }}
             />
           </div>
         ))}
