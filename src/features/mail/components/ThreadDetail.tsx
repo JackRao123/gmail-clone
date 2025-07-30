@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, Forward, Reply } from "lucide-react";
 
 import { Button } from "~/features/shared/components/ui/button";
+import { ReplyForm } from "./ReplyForm";
 import { useTRPC } from "~/trpc/react";
 
 // formats the date into a string
@@ -133,6 +134,7 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
   const { data: threadEmails } = useSuspenseQuery(
     trpc.mail.get_thread_emails.queryOptions({ threadId })
   );
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   return (
     <div className="flex h-full flex-col">
@@ -164,7 +166,11 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setReplyingTo(replyingTo === email.messageId ? null : email.messageId)}
+                  >
                     <Reply className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="sm">
@@ -177,6 +183,20 @@ export function ThreadDetail({ threadId, onBack }: ThreadDetailProps) {
             <EmailFrame
               html={email.html}
               forwarded={email.subject?.startsWith("Fwd:") ?? false}
+            />
+
+            {/* Reply Form */}
+            <ReplyForm
+              isOpen={replyingTo === email.messageId}
+              onClose={() => setReplyingTo(null)}
+              originalEmail={{
+                from: email.from,
+                to: email.to,
+                subject: email.subject,
+                html: email.html,
+                messageId: email.messageId,
+              }}
+              threadId={threadId}
             />
           </div>
         ))}

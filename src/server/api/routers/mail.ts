@@ -192,4 +192,72 @@ export const mailRouter = createTRPCRouter({
         });
       }
     }),
+
+  // reply to an email (adds proper threading)
+  reply: protectedProcedure
+    .input(
+      z.object({
+        to: z.string().email(),
+        subject: z.string().min(1),
+        body: z.string().min(1),
+        threadId: z.string(),
+        originalMessageId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const gmailClient = getGmailClient(ctx.session);
+
+      try {
+        // Get the original message to extract headers
+        const originalMessage = await gmailClient.users.messages.get({
+          userId: "me",
+          id: input.originalMessageId,
+          format: "metadata",
+          metadataHeaders: ["Message-ID", "References", "In-Reply-To"],
+        });
+
+        const originalMessageId = originalMessage.data.payload?.headers?.find(
+          (h) => h.name === "Message-ID"
+        )?.value;
+
+        // Create the email message in RFC 2822 format with proper threading headers
+        const message = [
+          `To: ${input.to}`,
+          `Subject: ${input.subject}`,
+          `In-Reply-To: ${originalMessageId!}`,
+          `References: ${originalMessageId!}`,
+          "MIME-Version: 1.0",
+          "Content-Type: text/html; charset=utf-8",
+          "",
+          input.body,
+        ].join("\r\n");
+
+        // Encode the message in base64url format
+        const encodedMessage = Buffer.from(message)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        // Send the email using Gmail API with thread ID
+        const response = await gmailClient.users.messages.send({
+          userId: "me",
+          requestBody: {
+            raw: encodedMessage,
+            threadId: input.threadId,
+          },
+        });
+
+        return {
+          success: true,
+          messageId: response.data.id,
+          threadId: response.data.threadId,
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to send reply: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
+    }),
 });
