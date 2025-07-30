@@ -2,6 +2,7 @@ import type { ThreadMetaData } from "~/server/api/mail";
 import type { FormEvent } from "react";
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import ProfileMenu, { MenuOpenDirection } from "~/app/_components/ProfileMenu";
 import { LoadingSpinner } from "~/features/shared/components/LoadingSpinner";
@@ -14,9 +15,14 @@ import { formatDate, getSenderDisplay } from "./ThreadDetail";
 interface ThreadItemProps {
   thread: ThreadMetaData;
   isSelected: boolean;
-  onSelect: () => void;
 }
-function ThreadItem({ thread, isSelected, onSelect }: ThreadItemProps) {
+function ThreadItem({ thread, isSelected }: ThreadItemProps) {
+  // navigation to specific thread
+  const router = useRouter();
+  const handleClick = () => {
+    router.push(`/inbox/${thread.threadId}`);
+  };
+
   return (
     <div
       className={cn(
@@ -24,7 +30,7 @@ function ThreadItem({ thread, isSelected, onSelect }: ThreadItemProps) {
         isSelected &&
           "border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20"
       )}
-      onClick={onSelect}
+      onClick={handleClick}
     >
       {/* profile picture of sender (just first letter of sender name for now) */}
       <div className="flex-shrink-0">
@@ -55,14 +61,7 @@ function ThreadItem({ thread, isSelected, onSelect }: ThreadItemProps) {
   );
 }
 
-interface ThreadListProps {
-  selectedThreadId?: string;
-  onThreadSelect: (threadId: string) => void;
-}
-export function ThreadList({
-  selectedThreadId,
-  onThreadSelect,
-}: ThreadListProps) {
+export function ThreadList() {
   const trpc = useTRPC();
   const { data, isLoading } = useQuery(trpc.mail.list_threads.queryOptions({}));
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,8 +105,7 @@ export function ThreadList({
             <ThreadItem
               thread={thread}
               key={thread.threadId}
-              isSelected={selectedThreadId === thread.threadId}
-              onSelect={() => onThreadSelect(thread.threadId)}
+              isSelected={false}
             />
           ))}
         </div>

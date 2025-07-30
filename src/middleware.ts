@@ -36,9 +36,20 @@ export function middleware(request: NextRequest) {
         // TODO ADD MORE
     ])
 
+    const VALID_PREFIXES = new Set([
+        '/inbox'
+    ])
+
     if (VALID_PATHS.has(pathname)) {
         return NextResponse.next()
     }
+
+    for (const prefix of VALID_PREFIXES) {
+        if (pathname.startsWith(prefix)) {
+            return NextResponse.next()
+        }
+    }
+
 
     return NextResponse.redirect(new URL('/inbox', request.url))
 }

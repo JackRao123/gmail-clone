@@ -1,32 +1,21 @@
 import React, { Suspense, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import { Skeleton } from "~/features/shared/components/ui/skeleton";
 import { useTRPC } from "~/trpc/react";
 
 import { ComposeEmail } from "./ComposeEmail";
 import { EmailToolbar } from "./EmailToolbar";
-import { ThreadDetail } from "./ThreadDetail";
 import { ThreadList } from "./ThreadList";
 
 export function EmailInterface() {
-  const [selectedThreadId, setSelectedThreadId] = useState<
-    string | undefined
-  >();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isComposeMinimized, setIsComposeMinimized] = useState(false);
   const queryClient = useQueryClient();
   const trpc = useTRPC();
-
-  const handleThreadSelect = (threadId: string) => {
-    setSelectedThreadId(threadId);
-  };
-
-  const handleBackToList = () => {
-    setSelectedThreadId(undefined);
-  };
 
   const handleRefresh = () => {
     void queryClient.invalidateQueries({
@@ -115,21 +104,9 @@ export function EmailInterface() {
 
       {/* Main Content Area */}
       <div className="flex-1 bg-white dark:bg-gray-900">
-        {selectedThreadId ? (
-          <Suspense fallback={<Skeleton className="h-full" />}>
-            <ThreadDetail
-              threadId={selectedThreadId}
-              onBack={handleBackToList}
-            />
-          </Suspense>
-        ) : (
-          <Suspense fallback={<Skeleton className="h-full" />}>
-            <ThreadList
-              selectedThreadId={selectedThreadId}
-              onThreadSelect={handleThreadSelect}
-            />
-          </Suspense>
-        )}
+        <Suspense fallback={<Skeleton className="h-full" />}>
+          <ThreadList />
+        </Suspense>
       </div>
 
       {/* Compose Email */}
