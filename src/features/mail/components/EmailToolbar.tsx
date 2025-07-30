@@ -9,7 +9,7 @@ interface EmailToolbarProps {
   onCompose?: () => void;
   onSearch?: (query: string) => void;
   onSync?: () => void;
-  onDeleteAll?: () => void;
+  onClear?: () => void;
   isSyncing?: boolean;
   isDeleting?: boolean;
 }
@@ -19,7 +19,7 @@ export function EmailToolbar({
   onCompose,
   onSearch,
   onSync,
-  onDeleteAll,
+  onClear,
   isSyncing = false,
   isDeleting = false,
 }: EmailToolbarProps) {
@@ -52,7 +52,7 @@ export function EmailToolbar({
       {/* Delete Button */}
       <div className="mb-8">
         <Button
-          onClick={onDeleteAll}
+          onClick={onClear}
           className="w-full justify-start"
           size="sm"
           variant="outline"

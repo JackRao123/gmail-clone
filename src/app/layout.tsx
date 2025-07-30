@@ -3,7 +3,6 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Geist } from "next/font/google";
-import { ErrorBoundary } from "react-error-boundary";
 import { Toaster } from "sonner";
 
 import GlobalErrorFallback from "~/features/shared/components/GlobalErrorFallback";

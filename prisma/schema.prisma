@@ -64,6 +64,7 @@ model User {
     sessions      Session[]
     posts         Post[]
     emails        Email[]
+    threads       Thread[]
 }
 
 model VerificationToken {
@@ -74,23 +75,45 @@ model VerificationToken {
     @@unique([identifier, token])
 }
 
+// Thread model to group related emails
+model Thread {
+    threadId String @unique // Gmail thread ID
+    userId   String
+
+    snippet   String? // Thread snippet from Gmail
+    historyId String? // Gmail history ID for sync
+ 
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    emails    Email[]
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([userId])
+    @@index([threadId])
+}
+
 // Metadata
 model Email {
-    userId String
-
     // messageId corresponds to messageId in gmail API
     // messageId is also used as the key for when we store raw HTML on S3 
-    messageId String    @id @unique
-    subject   String?
-    from      String?
-    to        String?
-    date      DateTime?
-    labels    String[]
+    messageId String @id @unique
+
+    userId String
+
+    threadId String? // Reference to the thread this email belongs to
+    subject  String?
+    from     String?
+    to       String?
+    date     DateTime?
+    labels   String[]
+    snippet  String? // Email snippet from Gmail
 
     user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    thread    Thread?  @relation(fields: [threadId], references: [threadId], onDelete: Cascade)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
     @@index([userId])
     @@index([messageId])
+    @@index([threadId])
 }

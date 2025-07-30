@@ -1,4 +1,4 @@
 export { EmailInterface } from "./EmailInterface";
-export { EmailList } from "./EmailList";
-export { EmailDetail } from "./EmailDetail";
-export { EmailToolbar } from "./EmailToolbar"; 
+export { EmailToolbar } from "./EmailToolbar";
+export { ThreadList } from "./ThreadList";
+export { ThreadDetail } from "./ThreadDetail";

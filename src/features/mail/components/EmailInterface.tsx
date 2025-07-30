@@ -4,28 +4,30 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "~/features/shared/components/ui/skeleton";
 import { useTRPC } from "~/trpc/react";
 
-import { EmailDetail } from "./EmailDetail";
-import { EmailList } from "./EmailList";
 import { EmailToolbar } from "./EmailToolbar";
+import { ThreadDetail } from "./ThreadDetail";
+import { ThreadList } from "./ThreadList";
 
 export function EmailInterface() {
-  const [selectedEmailId, setSelectedEmailId] = useState<string | undefined>();
+  const [selectedThreadId, setSelectedThreadId] = useState<
+    string | undefined
+  >();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
-  const handleEmailSelect = (emailId: string) => {
-    setSelectedEmailId(emailId);
+  const handleThreadSelect = (threadId: string) => {
+    setSelectedThreadId(threadId);
   };
 
   const handleBackToList = () => {
-    setSelectedEmailId(undefined);
+    setSelectedThreadId(undefined);
   };
 
   const handleRefresh = () => {
     void queryClient.invalidateQueries({
-      queryKey: trpc.mail.list_inbox.queryKey(),
+      queryKey: trpc.mail.list_threads.queryKey(),
     });
   };
 
@@ -40,12 +42,12 @@ export function EmailInterface() {
   };
 
   const syncMutation = useMutation(
-    trpc.mail.sync.mutationOptions({
+    trpc.mail.sync_threads.mutationOptions({
       onSuccess: (result) => {
         console.log("Sync result:", result);
-        // Refresh the email list after sync
+        // Refresh the thread list after sync
         void queryClient.invalidateQueries({
-          queryKey: trpc.mail.list_inbox.queryKey(),
+          queryKey: trpc.mail.list_threads.queryKey(),
         });
       },
       onError: (error) => {
@@ -60,21 +62,21 @@ export function EmailInterface() {
   const handleSync = () => {
     setIsSyncing(true);
     syncMutation.mutate({
-      maxResults: 50, // Sync up to 50 emails
+      maxResults: 50, // Sync up to 50 threads
     });
   };
 
   const clearMutation = useMutation(
     trpc.mail.clear.mutationOptions({
-      onSuccess: (result) => {
-        console.log(`Deleted ${result.count} emails`);
-        // Refresh the email list after sync
+      onSuccess: () => {
+        console.log("All emails cleared");
+        // Refresh the thread list after clear
         void queryClient.invalidateQueries({
-          queryKey: trpc.mail.list_inbox.queryKey(),
+          queryKey: trpc.mail.list_threads.queryKey(),
         });
       },
       onError: (error) => {
-        console.error("Deletion failed:", error);
+        console.error("Clear failed:", error);
       },
       onSettled: () => {
         setIsDeleting(false);
@@ -82,9 +84,15 @@ export function EmailInterface() {
     })
   );
 
-  const handleDeleteAll = () => {
-    setIsDeleting(true);
-    clearMutation.mutate();
+  const handleClear = () => {
+    if (
+      confirm(
+        "Are you sure you want to delete all emails? This cannot be undone."
+      )
+    ) {
+      setIsDeleting(true);
+      clearMutation.mutate();
+    }
   };
 
   return (
@@ -96,7 +104,7 @@ export function EmailInterface() {
           onCompose={handleCompose}
           onSearch={handleSearch}
           onSync={handleSync}
-          onDeleteAll={handleDeleteAll}
+          onClear={handleClear}
           isSyncing={isSyncing}
           isDeleting={isDeleting}
         />
@@ -104,15 +112,18 @@ export function EmailInterface() {
 
       {/* Main Content Area */}
       <div className="flex-1 bg-white dark:bg-gray-900">
-        {selectedEmailId ? (
+        {selectedThreadId ? (
           <Suspense fallback={<Skeleton className="h-full" />}>
-            <EmailDetail emailId={selectedEmailId} onBack={handleBackToList} />
+            <ThreadDetail
+              threadId={selectedThreadId}
+              onBack={handleBackToList}
+            />
           </Suspense>
         ) : (
           <Suspense fallback={<Skeleton className="h-full" />}>
-            <EmailList
-              selectedEmailId={selectedEmailId}
-              onEmailSelect={handleEmailSelect}
+            <ThreadList
+              selectedThreadId={selectedThreadId}
+              onThreadSelect={handleThreadSelect}
             />
           </Suspense>
         )}

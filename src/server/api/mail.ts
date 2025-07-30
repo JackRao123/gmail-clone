@@ -117,7 +117,6 @@ export async function getMessageDetails(
   // https://developers.google.com/workspace/gmail/api/guides/labels
   // labels are string literals like INBOX, SENT, ...
   const labels = res.data.labelIds ?? [];
-  console.log(`Label ids  = ${JSON.stringify(labels, null, 2)}`);
 
   return {
     // text: parsed.text ?? "",
@@ -172,5 +171,223 @@ export async function listEmails(
   return {
     emails,
     total: emails.length,
+  };
+}
+
+export interface ThreadMetaData {
+  threadId: string;
+  subject: string | null;
+  snippet: string | null;
+  from: string | null;
+  to: string | null;
+  date: Date | null;
+  emailCount: number;
+  unreadCount: number;
+}
+
+/**
+ * Get thread details from Gmail API
+ * @param client - gmail client
+ * @param threadId - ID of thread to fetch
+ * @returns thread details with messages
+ */
+export async function getThreadDetails(
+  client: gmail_v1.Gmail,
+  threadId: string
+) {
+  const res = await client.users.threads.get({
+    userId: "me",
+    id: threadId,
+  });
+
+  const thread = res.data;
+
+  console.log(`Thread = ${JSON.stringify(thread, null, 2)}`);
+
+  const messages = thread.messages ?? [];
+
+  return {
+    threadId: thread.id!,
+    snippet: thread.snippet ?? "",
+    messages: messages.map((msg) => ({
+      messageId: msg.id!,
+      threadId: thread.id!,
+      labels: msg.labelIds ?? [],
+      snippet: msg.snippet ?? "",
+    })),
+    historyId: thread.historyId,
+  };
+}
+
+/**
+ * List threads from database with email metadata
+ * @param userId - user ID
+ * @param limit - number of threads to fetch
+ * @param offset - offset for pagination
+ * @param labelFilter - label to filter by
+ * @returns threads with metadata
+ */
+export async function listThreads(
+  userId: string,
+  limit: number,
+  offset: number,
+  labelFilter: string
+) {
+  const threads = await db.thread.findMany({
+    where: {
+      userId: userId,
+    },
+    include: {
+      emails: {
+        orderBy: {
+          date: "asc",
+        },
+        take: 1, // Get the most recent email for preview
+      },
+    },
+    orderBy: {
+      // when we sync threads from the server, we receive the newest ones first
+      // this means the newest ones are updated first and will have the lowest value of updatedAt
+      updatedAt: "asc",
+    },
+    take: limit,
+    skip: offset,
+  });
+
+  const threadData: ThreadMetaData[] = threads.map((thread) => {
+    const latestEmail = thread.emails[0];
+    const unreadCount = thread.emails.filter((email) =>
+      email.labels.includes("UNREAD")
+    ).length;
+
+    let snippet = "";
+    if (thread.snippet && thread.snippet != "") {
+      snippet = thread.snippet;
+    } else if (latestEmail?.snippet && latestEmail.snippet != "") {
+      snippet = latestEmail.snippet;
+    }
+
+    return {
+      threadId: thread.threadId,
+      subject: latestEmail?.subject ?? "No subject",
+      snippet: snippet,
+      from: latestEmail?.from ?? "",
+      to: latestEmail?.to ?? "",
+      date: latestEmail?.date ?? thread.updatedAt,
+      emailCount: thread.emails.length,
+      unreadCount,
+    };
+  });
+
+  return {
+    threads: threadData,
+    total: threadData.length,
+  };
+}
+
+/**
+ * Sync threads from Gmail API to database
+ * @param client - gmail client
+ * @param userId - user ID
+ * @param maxResults - maximum threads to sync
+ * @returns sync result
+ */
+export async function syncThreads(
+  client: gmail_v1.Gmail,
+  userId: string,
+  maxResults = 20
+) {
+  const s3Client = getS3Client();
+  const res = await client.users.threads.list({
+    userId: "me",
+    maxResults,
+  });
+  const gmailThreads = res.data.threads ?? [];
+
+  let syncedCount = 0;
+  const totalThreads = gmailThreads.length;
+
+  for (const gmailThread of gmailThreads) {
+    if (!gmailThread.id) continue;
+
+    //have to disable this optimisation because threads can get updated
+    // todo - figure out how to efficiently sync
+
+    // Check if thread already exists
+    // const existingThread = await db.thread.findUnique({
+    //   where: {
+    //     threadId: gmailThread.id,
+    //     userId: userId,
+    //   },
+    // });
+
+    // if (existingThread) {
+    //   // If we reach an existing thread, we can stop (threads are ordered by recent activity)
+    //   break;
+    // }
+
+    // Get full thread details
+    const threadDetails = await getThreadDetails(client, gmailThread.id);
+
+    // Create thread in database
+    const thread = await db.thread.create({
+      data: {
+        threadId: threadDetails.threadId,
+        userId: userId,
+        snippet: threadDetails.snippet,
+        historyId: threadDetails.historyId,
+      },
+    });
+
+    // Process each message in the thread
+    for (const messageInfo of threadDetails.messages) {
+      // Check if message already exists
+      // const existingEmail = await db.email.findUnique({
+      //   where: {
+      //     messageId: messageInfo.messageId,
+      //   },
+      // });
+
+      // if (existingEmail) continue;
+
+      // Get full message details
+      const messageDetails = await getMessageDetails(
+        client,
+        messageInfo.messageId
+      );
+
+      // Store HTML in S3
+      const html = messageDetails.html || "";
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: messageInfo.messageId,
+          Body: html,
+        })
+      );
+
+      // Store email in database
+      await db.email.create({
+        data: {
+          userId: userId,
+          messageId: messageInfo.messageId,
+          threadId: thread.threadId,
+          subject: messageDetails.subject,
+          from: messageDetails.from,
+          to: messageDetails.to,
+          date: messageDetails.date,
+          labels: messageDetails.labels,
+          snippet: messageInfo.snippet,
+        },
+      });
+    }
+
+    syncedCount++;
+  }
+
+  return {
+    synced: syncedCount,
+    total: totalThreads,
+    message: `Successfully synced ${syncedCount} new threads out of ${totalThreads} total threads`,
   };
 }
