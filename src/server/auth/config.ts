@@ -6,6 +6,7 @@ import z from "zod";
 import { db } from "~/server/db";
 
 import { getGmailClient, getGoogleOAuthTokens, syncThreads } from "../api/mail";
+import { setupPushInboxUpdates } from "../api/pubsub";
 
 // Response from google api when trying to refresh token
 const RefreshTokenResponseSchema = z.object({
@@ -146,20 +147,51 @@ export const authConfig = {
       if (isNewUser) {
         // console.log(`new user: account = ${JSON.stringify(account, null, 2)}`);
 
-        const googleTokens = await getGoogleOAuthTokens(user.id!);
+        const userId = user.id!;
+
+        const googleTokens = await getGoogleOAuthTokens(userId);
         const gmailClient = getGmailClient(
           googleTokens.accessToken,
           googleTokens.refreshToken
         );
 
         // sync some of the emails first. cronjob will do the rest later
-        const syncRes = await syncThreads(gmailClient, user.id!, 5);
+        // handles historical emails
+        const syncRes = await syncThreads(gmailClient, userId, 5);
         await db.pendingSync.create({
           data: {
-            userId: user.id!,
+            userId: userId,
             nextPageToken: syncRes.nextPageToken,
           },
         });
+
+        // seed prevHistoryId
+        const profileRes = await gmailClient.users.getProfile({
+          userId: "me",
+        });
+
+        if (!profileRes.data) {
+          throw new Error(
+            `Couldn't find user on google api with user ID ${userId}`
+          );
+        }
+
+        await db.user.update({
+          where: {
+            id: userId,
+          },
+          data: {
+            prevHistoryId: profileRes.data.historyId!,
+          },
+        });
+
+        // handles new emails (google pubsub api)
+        // run in the background,
+        void setupPushInboxUpdates(
+          userId,
+          googleTokens.accessToken,
+          googleTokens.refreshToken
+        );
       }
     },
   },

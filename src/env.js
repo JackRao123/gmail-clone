@@ -11,6 +11,7 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
+    // For OAUTH
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
     DATABASE_URL: z.string().url(),
@@ -20,6 +21,13 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: z.string(),
     AWS_SECRET_ACCESS_KEY: z.string(),
     CRON_SECRET: z.string(),
+    // Google Cloud Pub/Sub configuration
+    PUBSUB_CLIENT_EMAIL: z.string(),
+    PUBSUB_PRIVATE_KEY: z.string(),
+    PUBSUB_TOPIC_NAME: z.string(),
+    PUBSUB_SUBSCRIPTION_NAME: z.string(),
+    PUBSUB_PROJECT_ID: z.string(),
+    PUBSUB_PUSHENDPOINT_URL: z.string(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -50,6 +58,12 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
+    PUBSUB_CLIENT_EMAIL: process.env.PUBSUB_CLIENT_EMAIL,
+    PUBSUB_PRIVATE_KEY: process.env.PUBSUB_PRIVATE_KEY,
+    PUBSUB_TOPIC_NAME: process.env.PUBSUB_TOPIC_NAME,
+    PUBSUB_SUBSCRIPTION_NAME: process.env.PUBSUB_SUBSCRIPTION_NAME,
+    PUBSUB_PROJECT_ID: process.env.PUBSUB_PROJECT_ID,
+    PUBSUB_PUSHENDPOINT_URL: process.env.PUBSUB_PUSHENDPOINT_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
