@@ -5,6 +5,8 @@ import z from "zod";
 
 import { db } from "~/server/db";
 
+import { getGmailClient, getGoogleOAuthTokens, syncThreads } from "../api/mail";
+
 // Response from google api when trying to refresh token
 const RefreshTokenResponseSchema = z.object({
   access_token: z.string(),
@@ -136,6 +138,29 @@ export const authConfig = {
       session.user.refreshToken = acct.refresh_token!;
 
       return session;
+    },
+  },
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      // console.log(`SIGNED IN user ${JSON.stringify(user, null, 2)}`);
+      if (isNewUser) {
+        // console.log(`new user: account = ${JSON.stringify(account, null, 2)}`);
+
+        const googleTokens = await getGoogleOAuthTokens(user.id!);
+        const gmailClient = getGmailClient(
+          googleTokens.accessToken,
+          googleTokens.refreshToken
+        );
+
+        // sync some of the emails first. cronjob will do the rest later
+        const syncRes = await syncThreads(gmailClient, user.id!, 5);
+        await db.pendingSync.create({
+          data: {
+            userId: user.id!,
+            nextPageToken: syncRes.nextPageToken,
+          },
+        });
+      }
     },
   },
 } satisfies NextAuthConfig;

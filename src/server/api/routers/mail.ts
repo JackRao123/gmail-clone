@@ -1,21 +1,10 @@
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
-import {
-  getGmailClient,
-  getMessageDetails,
-  getS3Client,
-  listEmails,
-  listThreads,
-  syncThreads,
-} from "../mail";
+import { getGmailClient, getS3Client, listThreads, syncThreads } from "../mail";
 
 export interface EmailMetaData {
   createdAt: Date;
@@ -52,7 +41,10 @@ export const mailRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const gmailClient = getGmailClient(ctx.session);
+      const gmailClient = getGmailClient(
+        ctx.session.user.accessToken,
+        ctx.session.user.refreshToken
+      );
 
       try {
         return await syncThreads(
@@ -152,7 +144,10 @@ export const mailRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const gmailClient = getGmailClient(ctx.session);
+      const gmailClient = getGmailClient(
+        ctx.session.user.accessToken,
+        ctx.session.user.refreshToken
+      );
 
       try {
         // Create the email message in RFC 2822 format
@@ -205,7 +200,10 @@ export const mailRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const gmailClient = getGmailClient(ctx.session);
+      const gmailClient = getGmailClient(
+        ctx.session.user.accessToken,
+        ctx.session.user.refreshToken
+      );
 
       try {
         // Get the original message to extract headers

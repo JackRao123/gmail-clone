@@ -65,6 +65,7 @@ model User {
     posts         Post[]
     emails        Email[]
     threads       Thread[]
+    pendingSync   PendingSync?
 }
 
 model VerificationToken {
@@ -116,4 +117,11 @@ model Email {
     @@index([userId])
     @@index([messageId])
     @@index([threadId])
+}
+
+model PendingSync {
+    userId        String   @id
+    nextPageToken String? // if this is undefined, it means first sync has not run. once all syncs are done, this PendingSync gets deleted
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

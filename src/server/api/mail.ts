@@ -1,43 +1,15 @@
 import type { EmailMetaData } from "./routers/mail";
-import type { Session } from "next-auth";
+import type { gmail_v1 } from "googleapis";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { TRPCError } from "@trpc/server";
-import { gmail_v1, google } from "googleapis";
+import { google } from "googleapis";
 import { simpleParser } from "mailparser";
 
 import { db } from "../db";
 
-/**
- *
- * @param session - next auth session e.g. (pass ctx.session if calling from router)
- * @returns authenticated oAuth2Client
- */
-export function getGmailClient(session: Session) {
-  if (!session) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "Session doesn't exist",
-    });
-  }
-
+// Creates instance of authorised OAUTH2 client with specified tokens
+export function getGmailClient(accessToken: string, refreshToken: string) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const accessToken = session?.user.accessToken;
-  const refreshToken = session?.user.refreshToken;
-
-  if (!accessToken) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "accessToken doesn't exist",
-    });
-  }
-
-  if (!refreshToken) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "refreshToken doesn't exist",
-    });
-  }
 
   const oAuth2Client = new google.auth.OAuth2({
     clientId: clientId,
@@ -50,6 +22,28 @@ export function getGmailClient(session: Session) {
   });
 
   return google.gmail({ version: "v1", auth: oAuth2Client });
+}
+
+// retrieves the accessToken and refreshToken for a user
+export async function getGoogleOAuthTokens(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    include: { accounts: true },
+  });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const googleAccount = user.accounts.find((a) => a.provider === "google");
+
+  if (!googleAccount) {
+    throw new Error("No Google account");
+  }
+
+  return {
+    accessToken: String(googleAccount.access_token),
+    refreshToken: String(googleAccount.refresh_token),
+  };
 }
 
 /**
@@ -305,23 +299,25 @@ export async function listThreads(
  * @param client - gmail client
  * @param userId - user ID
  * @param maxResults - maximum threads to sync
+ * @param pageToken - optional pageToken to sync from
  * @returns sync result
  */
 export async function syncThreads(
   client: gmail_v1.Gmail,
   userId: string,
-  maxResults = 20
+  maxResults = 20,
+  pageToken?: string
 ) {
   const s3Client = getS3Client();
   const res = await client.users.threads.list({
     userId: "me",
     maxResults,
+    pageToken: pageToken,
   });
-  const gmailThreads = res.data.threads ?? [];
 
+  const gmailThreads = res.data.threads ?? [];
   let syncedCount = 0;
   const totalThreads = gmailThreads.length;
-
   for (const gmailThread of gmailThreads) {
     if (!gmailThread.id) continue;
 
@@ -416,5 +412,6 @@ export async function syncThreads(
     synced: syncedCount,
     total: totalThreads,
     message: `Successfully synced ${syncedCount} new threads out of ${totalThreads} total threads`,
+    nextPageToken: res.data.nextPageToken,
   };
 }
