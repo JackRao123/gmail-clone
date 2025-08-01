@@ -1,7 +1,8 @@
 import type { ThreadMetaData } from "~/server/api/mail";
-import type { FormEvent } from "react";
-import React, { useState } from "react";
+import type { ChangeEvent } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import ProfileMenu, { MenuOpenDirection } from "~/app/_components/ProfileMenu";
@@ -11,6 +12,39 @@ import { cn } from "~/lib/utils";
 import { useTRPC } from "~/trpc/react";
 
 import { formatDate, getSenderDisplay } from "./ThreadDetail";
+
+interface SearchInputProps {
+  setSearchTerm: (value: string) => void;
+}
+
+export const SearchInput = memo(function SearchInput({
+  setSearchTerm,
+}: SearchInputProps) {
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setLocalSearchQuery(e.target.value);
+  };
+  // debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(localSearchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearchQuery]); //
+
+  return (
+    <div className="relative mr-4 flex-1">
+      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+      <Input
+        type="text"
+        placeholder="Search threads..."
+        value={localSearchQuery}
+        onChange={handleChange}
+        className="pl-10"
+      />
+    </div>
+  );
+});
 
 interface ThreadItemProps {
   thread: ThreadMetaData;
@@ -61,39 +95,19 @@ function ThreadItem({ thread, isSelected }: ThreadItemProps) {
   );
 }
 
-export function ThreadList() {
+export function ThreadList({ searchTerm }: { searchTerm: string }) {
   const trpc = useTRPC();
-  const { data } = useSuspenseQuery(trpc.mail.list_threads.queryOptions({}));
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement search functionality
-    console.log("Search:", searchQuery);
-  };
+  const { data } = useSuspenseQuery(
+    trpc.mail.list_threads.queryOptions({
+      search: searchTerm,
+    })
+  );
 
   const threads = data?.threads ?? [];
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header with Search and Profile */}
-      <div className="border-b border-gray-200 p-4 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <form onSubmit={handleSearch} className="relative mr-4 flex-1">
-            <Input
-              type="text"
-              placeholder="Search threads..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-4 pl-10"
-            />
-          </form>
-          <div className="flex-shrink-0 px-6">
-            <ProfileMenu menuOpenDirection={MenuOpenDirection.BOTTOM_LEFT} />
-          </div>
-        </div>
-      </div>
-
       {/* Thread List */}
       {threads.length !== 0 ? (
         <div className="flex-1 overflow-auto">

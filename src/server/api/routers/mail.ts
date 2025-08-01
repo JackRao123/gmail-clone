@@ -22,6 +22,7 @@ export const mailRouter = createTRPCRouter({
       z.object({
         limit: z.number().min(1).max(100).default(100),
         offset: z.number().min(0).default(0),
+        search: z.string().default(""), // "" will match everything when considered as a substring
       })
     )
     .query(async ({ ctx, input }) => {
@@ -29,7 +30,8 @@ export const mailRouter = createTRPCRouter({
         ctx.session.user.id,
         input.limit,
         input.offset,
-        "INBOX"
+        "INBOX",
+        input.search
       );
     }),
 

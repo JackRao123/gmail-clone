@@ -230,13 +230,15 @@ export async function getThreadDetails(
  * @param limit - number of threads to fetch
  * @param offset - offset for pagination
  * @param labelFilter - label to filter by
+ * @param search - search term to filter by (searches subject and from fields)
  * @returns threads with metadata
  */
 export async function listThreads(
   userId: string,
   limit: number,
   offset: number,
-  labelFilter: string
+  labelFilter: string,
+  search = "" // "" matches everything
 ) {
   const threads = await db.thread.findMany({
     where: {
@@ -244,6 +246,26 @@ export async function listThreads(
       labels: {
         has: labelFilter,
       },
+      ...(search && {
+        emails: {
+          some: {
+            OR: [
+              {
+                subject: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                from: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        },
+      }),
     },
     include: {
       emails: {

@@ -2,18 +2,21 @@ import React, { Suspense, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
+import ProfileMenu, { MenuOpenDirection } from "~/app/_components/ProfileMenu";
 import { Skeleton } from "~/features/shared/components/ui/skeleton";
 import { useTRPC } from "~/trpc/react";
 
 import { ComposeEmail } from "./ComposeEmail";
 import { EmailToolbar } from "./EmailToolbar";
-import { ThreadList } from "./ThreadList";
+import { SearchInput, ThreadList } from "./ThreadList";
 
 export function EmailInterface() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [isComposeMinimized, setIsComposeMinimized] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
@@ -104,8 +107,18 @@ export function EmailInterface() {
 
       {/* Main Content Area */}
       <div className="flex-1 bg-white dark:bg-gray-900">
+        {/* Header with Search and Profile */}
+        <div className="border-b border-gray-200 p-4 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <SearchInput setSearchTerm={setSearchTerm} />
+            <div className="flex-shrink-0 px-6">
+              <ProfileMenu menuOpenDirection={MenuOpenDirection.BOTTOM_LEFT} />
+            </div>
+          </div>
+        </div>
+
         <Suspense fallback={<Skeleton className="h-full" />}>
-          <ThreadList />
+          <ThreadList searchTerm={searchTerm} />
         </Suspense>
       </div>
 
